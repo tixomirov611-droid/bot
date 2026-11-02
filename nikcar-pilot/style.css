@@ -167,3 +167,32 @@ body:has(.v09-auth){background:radial-gradient(circle at 0 0,#E4F3EB 0,transpare
  .v09-auth .auth-info{margin-top:16px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* NikCar 0.10 — modern multi-provider authorization */
+.auth-method-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 16px}
+.auth-method{min-height:43px;border:1px solid #dfece7;border-radius:11px;background:#fff;color:#496761;font-weight:730;font-size:13px;padding:9px 11px}
+.auth-method.active{background:#e7f5ef;border-color:#77bbaa;color:#08685d;box-shadow:0 2px 9px #0a765f13}
+.auth-method:hover:not(.active){background:#f6faf8;border-color:#a0cfc1}
+.sso-section{margin-top:24px}
+.sso-divider{display:flex;align-items:center;gap:12px;color:#7b908a;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:.1px;margin-bottom:14px}
+.sso-divider:before,.sso-divider:after{content:"";height:1px;background:#e7efeb;flex:1}
+.sso-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sso-option{display:flex;align-items:center;gap:10px;padding:10px 11px;min-height:52px;text-align:left;border:1px solid #dfe9e5;border-radius:13px;background:#fff;color:#1c3539;font-size:12px;font-weight:780;min-width:0;box-shadow:0 2px 8px #1a645608}
+button.sso-option{cursor:pointer}
+button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px 13px #17604f18;transform:translateY(-1px)}
+.sso-option.sso-pending{cursor:default;background:#f8faf9;border-color:#e8efec;color:#5d7372;box-shadow:none}
+.sso-mark{width:31px;height:31px;display:inline-grid;place-items:center;border:1px solid #e6eeeb;border-radius:10px;background:#fff;flex:none;font-size:17px;line-height:1;font-weight:850}
+.sso-google{background:linear-gradient(125deg,#4285f4 0 40%,#34a853 41% 60%,#fbbc05 61% 80%,#ea4335 81%);color:transparent;background-clip:text;border-color:transparent}
+.sso-apple{font-size:18px;color:#1b2934}
+.sso-microsoft{font-size:25px;font-weight:600;color:#127d9d}
+.sso-github{font-size:11px;color:#24292f;letter-spacing:-1px}
+.sso-available{margin-left:auto;color:#0a8577;font-size:17px}
+.sso-soon{font-size:10px;font-weight:650;margin-left:auto;padding:4px 7px;border-radius:999px;background:#e8efec;color:#708880;white-space:nowrap}
+.sso-hint{font-size:11px;color:#7a8d88;margin:10px 0 0;line-height:1.55}
+.magic-hint{font-size:12px;margin:7px 0 3px;color:#64867b;line-height:1.55}
+@media(max-width:500px){
+ .sso-option{min-height:48px;padding:9px;gap:7px;font-size:12px}
+ .sso-mark{width:28px;height:28px}
+ .sso-soon{padding:3px 6px;font-size:9px}
+}
