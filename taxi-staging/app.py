@@ -116,7 +116,9 @@ def keyboard(items, request_contact=False):
 def send(cid, text, kb=None):
     p={"chat_id":cid,"text":text}
     if kb: p["reply_markup"]=kb
-    return api("sendMessage",p)
+    result = api("sendMessage",p)
+    if not result.get("ok"): app.logger.error("Telegram sendMessage failed: %s", result.get("description", "no description"))
+    return result
 @app.get("/")
 def home():
     return jsonify(service="NikCar Taxi", mode="staging", telegram_connected=False)
@@ -126,8 +128,11 @@ def health():
 @app.post("/telegram/webhook")
 def webhook():
     if not TOKEN or not WEBHOOK_SECRET: return jsonify(ok=False),503
-    if not hmac.compare_digest(request.headers.get("X-Telegram-Bot-Api-Secret-Token",""),WEBHOOK_SECRET):return jsonify(ok=False),403
+    if not hmac.compare_digest(request.headers.get("X-Telegram-Bot-Api-Secret-Token",""),WEBHOOK_SECRET):
+        app.logger.error("Webhook rejected: secret mismatch")
+        return jsonify(ok=False),403
     payload=request.get_json(silent=True) or {}
+    app.logger.warning("Webhook update received: id=%s, kind=%s", payload.get("update_id"), "callback" if payload.get("callback_query") else "message")
     if payload.get("callback_query"):
         c=payload["callback_query"]
         try:answer=driver_callback(c)
@@ -213,6 +218,10 @@ def _register_webhook():
             result = api("setWebhook", {"url": target, "secret_token": WEBHOOK_SECRET, "allowed_updates": ["message", "callback_query"], "drop_pending_updates": False})
             if result.get("ok"):
                 app.logger.warning("Telegram webhook registered successfully")
+                info=api("getWebhookInfo", {})
+                if info.get("ok"):
+                    x=info.get("result",{})
+                    app.logger.warning("Telegram webhook diagnostics: pending=%s last_error=%s",x.get("pending_update_count"),x.get("last_error_message"))
                 return
             app.logger.error("Telegram setWebhook rejected: %s", result.get("description", "unknown"))
         except Exception:
