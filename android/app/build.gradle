@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'ua.nikcar.fleet'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'ua.nikcar.fleet'
+        minSdk 26
+        targetSdk 36
+        versionCode 7
+        versionName '0.7.0-pilot'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        debug { applicationIdSuffix '.debug' }
+        release { minifyEnabled false }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.16.0'
+}
