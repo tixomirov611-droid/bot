@@ -75,7 +75,7 @@ def driver_callback(c):
             q.execute("SELECT status,client_id,driver_id,base_price,on_site_at,wait_fee,meta FROM nikcar_taxi.orders WHERE id=%s FOR UPDATE",(oid,))
             o=q.fetchone()
             if not o:return "Заказ не найден"
-            status,client,assigned,base,on_site,wait_fee,meta=o
+            status,client_id,assigned,base,on_site,wait_fee,meta=o
             if action=="accept" and status=="new":
                 q.execute("SELECT count(*) FROM nikcar_taxi.orders WHERE driver_id=%s AND status IN ('accepted','onsite','on_route')",(uid,))
                 if q.fetchone()[0]:return "У вас уже есть активный заказ"
@@ -94,7 +94,7 @@ def driver_callback(c):
                 next_action=None;message=f"Поездка завершена. Итого {float(base)+float(wait_fee or 0):.0f} грн."
             else:return "Действие уже выполнено или заказ другого водителя"
         conn.commit()
-    send(client,message)
+    send(client_id,message)
     buttons={"onsite":"📍 На месте","route":"▶️ В пути","done":"🏁 Завершить"}
     if next_action:api("sendMessage",{"chat_id":cid,"text":f"Заказ #{oid}: {message}","reply_markup":{"inline_keyboard":[[{"text":buttons[next_action],"callback_data":next_action+":"+oid}]]}})
     return "Готово"
