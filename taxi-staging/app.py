@@ -117,7 +117,7 @@ def dispatch_direct(uid,username,st):
           f"Телефон: {st.get('phone','—')}\\n"
           f"Пассажиры: {st.get('passengers',1)}\\n"
           f"Класс: {st.get('car_class','Standard')}\\n"
-          f"Оплата: наличные\\n"
+          f"Оплата: {'карта (согласовать с диспетчером)' if st.get('payment')=='card' else 'наличные'}\\n"
           f"Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}\\n"
           f"По прямой: {km:.1f} км (не дорожное расстояние)\\n" if km is not None else "Расстояние уточнит диспетчер\\n"
           f"📍 Посадка: {location_label(a)}\\n"
@@ -319,12 +319,15 @@ def webhook():
             send(cid,"Выберите класс / Оберіть клас",step_keyboard(st["lang"],["Standard","Comfort","Universal"]))
         else:
             st.update(car_class=text,step="payment")
-            send(cid,"💳 Способ оплаты / Спосіб оплати. Онлайн-оплата пока недоступна.",step_keyboard(st["lang"],["💵 Наличные / Готівка"]))
+            send(cid,"💳 Выберите способ оплаты / Оберіть спосіб оплати. Карта — только по согласованию с диспетчером, онлайн-списания нет.",step_keyboard(st["lang"],["💵 Наличные","💳 Карта"]))
     elif st["step"]=="payment":
-        if text.casefold() not in ("💵 наличные / готівка","наличка","наличные","готівка","готівкою","cash","нал"):
-            send(cid,"Доступна только оплата наличными / Доступна лише готівка",step_keyboard(st["lang"],["💵 Наличные / Готівка"]))
+        choice=text.casefold()
+        cash=choice in ("💵 наличные","💵 наличные / готівка","наличка","наличные","готівка","готівкою","cash","нал")
+        card=choice in ("💳 карта","карта","картой","карткою","card")
+        if not cash and not card:
+            send(cid,"Выберите наличные или карту / Оберіть готівку або картку",step_keyboard(st["lang"],["💵 Наличные","💳 Карта"]))
         else:
-            st.update(payment="cash",step="schedule")
+            st.update(payment="card" if card else "cash",step="schedule")
             z=STRINGS[st["lang"]]
             send(cid,z[6],step_keyboard(st["lang"],[z[7],z[8],z[9]]))
     elif st["step"]=="schedule":
@@ -341,7 +344,7 @@ def webhook():
                      f"📍 Откуда: {location_label(a)}\\n"
                      f"🏁 Куда: {location_label(b)}\\n"
                      f"👥 Пассажиров: {st['passengers']}\\n🚘 Класс: {st.get('car_class','Standard')}\\n"
-                     f"💵 Оплата: наличные\\n🕒 Подача: {delay} мин\\n"
+                     f"💳 Оплата: {'карта (уточнить у диспетчера)' if st.get('payment')=='card' else 'наличные'}\\n🕒 Подача: {delay} мин\\n"
                      f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n" if km is not None else "📏 Расстояние уточнит диспетчер\\n"
                      f"Подтвердить заказ? / Підтвердити замовлення?")
             send(cid,summary,step_keyboard(st["lang"],["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
