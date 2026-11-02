@@ -196,3 +196,29 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
  .sso-mark{width:28px;height:28px}
  .sso-soon{padding:3px 6px;font-size:9px}
 }
+
+
+/* NikCar 0.11: fewer controls, genuine available providers only */
+.v09-auth .auth-tabs{background:#f3f7f5;gap:3px;padding:3px;margin-bottom:18px}
+.v09-auth .auth-tabs .auth-tab{min-height:38px;padding:8px 10px;font-size:13px;font-weight:700}
+.v09-auth .auth-box .auth-header{margin-bottom:27px}
+.v09-auth .auth-box .auth-intro p{margin-bottom:18px}
+.v09-auth .auth-compact-link{display:flex;align-items:center;justify-content:flex-start;gap:13px;flex-wrap:wrap;margin:7px 0 2px}
+.v09-auth .auth-compact-link .auth-small-link{background:transparent;border:0;border-radius:0;min-height:34px;padding:5px 0;box-shadow:none;color:#50766c;font-size:12px;font-weight:650;text-decoration:none}
+.v09-auth .auth-compact-link .auth-small-link:hover{color:#086b60;text-decoration:underline;background:transparent;box-shadow:none;transform:none}
+.v09-auth .auth-compact-link .auth-small-link.active{color:#076f60;font-weight:800}
+.v09-auth .sso-section{margin-top:15px}
+.v09-auth .sso-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.v09-auth .sso-option{min-height:46px}
+.v09-auth .auth-helper{margin-top:7px}
+.v09-auth .auth-info{margin-top:13px}
+.v09-auth .auth-footer-note{margin-top:13px;font-size:10px}
+@media(max-width:680px){
+ .v09-auth{max-width:500px;margin:0 auto;padding:10px}
+ .v09-auth .auth-visual{display:none}
+ .v09-auth .auth-box{border:1px solid #e0eae6;border-radius:19px;padding:22px 20px 24px;box-shadow:0 8px 30px #134c4114}
+ .v09-auth .auth-header{margin-bottom:22px}
+ .v09-auth .auth-box h1{font-size:26px}
+ .v09-auth .auth-tabs{margin-bottom:15px}
+ .v09-auth .sso-section{margin-top:15px}
+}
