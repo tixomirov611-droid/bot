@@ -77,11 +77,16 @@ def make_order(uid,username,st):
             q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
+def location_label(p):
+    if p.get("address"): return p["address"]
+    return f"https://maps.google.com/?q={p['latitude']},{p['longitude']}"
+
 def dispatch_direct(uid,username,st):
     """Fallback dispatch without database. Telegram message is the durable record."""
     if not DISPATCH: return {"ok":False,"description":"DISPATCH_CHAT_ID missing"}
     a,b=st["origin"],st["destination"]
-    km=distance(a,b)
+    has_coords=all("latitude" in p and "longitude" in p for p in (a,b))
+    km=distance(a,b) if has_coords else None
     oid="T"+secrets.token_hex(4).upper()
     delay=st.get("delay",0)
     text=(f"🚕 NikCar — НОВЫЙ ЗАКАЗ #{oid}\\n"
@@ -91,9 +96,9 @@ def dispatch_direct(uid,username,st):
           f"Класс: {st.get('car_class','Standard')}\\n"
           f"Оплата: наличные\\n"
           f"Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}\\n"
-          f"По прямой: {km:.1f} км (не дорожное расстояние)\\n"
-          f"📍 Посадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\n"
-          f"🏁 Назначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}\\n"
+          f"По прямой: {km:.1f} км (не дорожное расстояние)\\n" if km is not None else "Расстояние уточнит диспетчер\\n"
+          f"📍 Посадка: {location_label(a)}\\n"
+          f"🏁 Назначение: {location_label(b)}\\n"
           f"⚠️ Резервный режим: заказ в Telegram, без записи в БД. Диспетчер подтверждает вручную.")
     result=api("sendMessage",{"chat_id":int(DISPATCH),"text":text,"disable_web_page_preview":True})
     if not result.get("ok"):
@@ -228,7 +233,7 @@ def webhook():
         options=MENU.get(lang,MENU["uk"])
         if text==options[0]:
             st["step"]="origin"
-            send(cid,STRINGS[lang][3]+"\n\n📍 Нажмите кнопку ниже, затем выберите «Отправить геопозицию» или точку на карте Telegram.",step_keyboard(lang,location=True))
+            send(cid,STRINGS[lang][3]+"\n\n📍 Выберите точку на карте через кнопку ниже ИЛИ напишите адрес текстом (например: Николаев, Соборная 12).",step_keyboard(lang,location=True))
         elif text==options[7]:
             send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
         elif text==options[8]:
@@ -259,13 +264,16 @@ def webhook():
     elif st["step"]=="section":
         show_menu(cid,st)
     elif st["step"] in ("origin","destination"):
-        if not msg.get("location"):
-            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4]+"\n\n📍 Нажмите кнопку геолокации и выберите точку на карте.",step_keyboard(st["lang"],location=True))
+        loc=msg.get("location")
+        if not loc and text and not text.startswith("/") and len(text)>=5 and len(text)<=250:
+            loc={"address":text}
+        if not loc:
+            send(cid,"📍 Выберите точку на карте или напишите адрес текстом (например: Николаев, Соборная 12).",step_keyboard(st["lang"],location=True))
         elif st["step"]=="origin":
-            st.update(origin=msg["location"],step="destination")
-            send(cid,STRINGS[st["lang"]][4]+"\n\n📍 Выберите точку назначения на карте Telegram и отправьте её.",step_keyboard(st["lang"],location=True))
+            st.update(origin=loc,step="destination")
+            send(cid,STRINGS[st["lang"]][4]+"\n\n📍 Выберите точку на карте ИЛИ напишите адрес назначения текстом.",step_keyboard(st["lang"],location=True))
         else:
-            st.update(destination=msg["location"],step="passengers")
+            st.update(destination=loc,step="passengers")
             send(cid,STRINGS[st["lang"]][5],step_keyboard(st["lang"],["1","2","3","4"]))
     elif st["step"]=="passengers":
         if text not in ("1","2","3","4"):
@@ -294,14 +302,14 @@ def webhook():
             send(cid,z[6],keyboard([z[7],z[8],z[9]]))
         else:
             st.update(delay=delay,step="confirm")
-            km=distance(st["origin"],st["destination"])
+            km=distance(st["origin"],st["destination"]) if all("latitude" in p for p in (st["origin"],st["destination"])) else None
             a,b=st["origin"],st["destination"]
             summary=(f"🚕 NikCar Taxi — проверка заказа / Перевірка замовлення\\n"
-                     f"📍 Откуда: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\n"
-                     f"🏁 Куда: https://maps.google.com/?q={b['latitude']},{b['longitude']}\\n"
+                     f"📍 Откуда: {location_label(a)}\\n"
+                     f"🏁 Куда: {location_label(b)}\\n"
                      f"👥 Пассажиров: {st['passengers']}\\n🚘 Класс: {st.get('car_class','Standard')}\\n"
                      f"💵 Оплата: наличные\\n🕒 Подача: {delay} мин\\n"
-                     f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n"
+                     f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n" if km is not None else "📏 Расстояние уточнит диспетчер\\n"
                      f"Подтвердить заказ? / Підтвердити замовлення?")
             send(cid,summary,step_keyboard(st["lang"],["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
     elif st["step"]=="confirm":
@@ -314,7 +322,7 @@ def webhook():
         elif not DISPATCH:
             send(cid,"⚠️ Диспетчерская группа не настроена. Заказ не создан / Диспетчерська група не налаштована.")
             show_menu(cid,st)
-        elif not DATABASE_URL:
+        elif not DATABASE_URL or any("latitude" not in p for p in (st["origin"],st["destination"])):
             st["submitting"]=True
             result,oid=dispatch_direct(uid,msg["from"].get("username"),st)
             if result.get("ok"):
