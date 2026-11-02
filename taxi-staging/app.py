@@ -228,7 +228,7 @@ def webhook():
         options=MENU.get(lang,MENU["uk"])
         if text==options[0]:
             st["step"]="origin"
-            send(cid,STRINGS[lang][3],step_keyboard(lang,location=True))
+            send(cid,STRINGS[lang][3]+"\n\n📍 Нажмите кнопку ниже, затем выберите «Отправить геопозицию» или точку на карте Telegram.",step_keyboard(lang,location=True))
         elif text==options[7]:
             send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
         elif text==options[8]:
@@ -260,10 +260,10 @@ def webhook():
         show_menu(cid,st)
     elif st["step"] in ("origin","destination"):
         if not msg.get("location"):
-            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4],step_keyboard(st["lang"],location=True))
+            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4]+"\n\n📍 Нажмите кнопку геолокации и выберите точку на карте.",step_keyboard(st["lang"],location=True))
         elif st["step"]=="origin":
             st.update(origin=msg["location"],step="destination")
-            send(cid,STRINGS[st["lang"]][4],step_keyboard(st["lang"],location=True))
+            send(cid,STRINGS[st["lang"]][4]+"\n\n📍 Выберите точку назначения на карте Telegram и отправьте её.",step_keyboard(st["lang"],location=True))
         else:
             st.update(destination=msg["location"],step="passengers")
             send(cid,STRINGS[st["lang"]][5],step_keyboard(st["lang"],["1","2","3","4"]))
