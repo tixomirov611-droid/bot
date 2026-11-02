@@ -86,13 +86,38 @@ def distance(a,b):
     x1,x2=math.radians(a["latitude"]),math.radians(b["latitude"])
     dx=x2-x1;dy=math.radians(b["longitude"]-a["longitude"])
     return 12742*math.asin(min(1,math.sqrt(math.sin(dx/2)**2+math.cos(x1)*math.cos(x2)*math.sin(dy/2)**2)))
-def route_estimate(st):
-    """OSRM road distance for coordinate points; text addresses require geocoding."""
-    points=[st["origin"],st["destination"]]
-    if any("latitude" not in p or "longitude" not in p for p in points):
+_geo_lock=threading.Lock()
+_geo_last=0.0
+_geo_cache={}
+def geocode_point(p):
+    global _geo_last
+    if "latitude" in p and "longitude" in p:
+        return float(p["latitude"]),float(p["longitude"])
+    address=(p.get("address") or "").strip()
+    if not address: return None
+    if not any(x in address.lower() for x in ("николаев","миколаїв","mykolaiv","украина","україна","ukraine")):
+        address+=", Миколаїв, Україна"
+    if address in _geo_cache: return _geo_cache[address]
+    params=urllib.parse.urlencode({"q":address,"format":"json","limit":1,"countrycodes":"ua"})
+    try:
+        with _geo_lock:
+            delay=max(0,1.1-(time.monotonic()-_geo_last))
+            if delay: time.sleep(delay)
+            _geo_last=time.monotonic()
+            req=urllib.request.Request("https://nominatim.openstreetmap.org/search?"+params,headers={"User-Agent":"NikCarTaxi/1.0","Accept":"application/json"})
+            with urllib.request.urlopen(req,timeout=7) as resp: data=json.load(resp)
+        if not data: return None
+        result=float(data[0]["lat"]),float(data[0]["lon"])
+        _geo_cache[address]=result
+        return result
+    except Exception:
+        app.logger.exception("Address geocoding failed")
         return None
-    a,b=points
-    coords=f"{a['longitude']},{a['latitude']};{b['longitude']},{b['latitude']}"
+def route_estimate(st):
+    a=geocode_point(st["origin"])
+    b=geocode_point(st["destination"])
+    if not a or not b: return None
+    coords=f"{a[1]},{a[0]};{b[1]},{b[0]}"
     url="https://router.project-osrm.org/route/v1/driving/"+coords+"?overview=false"
     try:
         req=urllib.request.Request(url,headers={"User-Agent":"NikCarTaxi/1.0"})
