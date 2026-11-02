@@ -122,7 +122,7 @@ def health():
     return jsonify(status="ok", token_configured=bool(TOKEN), database_configured=bool(DATABASE_URL), dispatch_configured=bool(DISPATCH), webhook_secret_configured=bool(WEBHOOK_SECRET))
 @app.post("/telegram/webhook")
 def webhook():
-    if not TOKEN or not DATABASE_URL or not DISPATCH or not WEBHOOK_SECRET: return jsonify(ok=False),503
+    if not TOKEN or not WEBHOOK_SECRET: return jsonify(ok=False),503
     if not hmac.compare_digest(request.headers.get("X-Telegram-Bot-Api-Secret-Token",""),WEBHOOK_SECRET):return jsonify(ok=False),403
     payload=request.get_json(silent=True) or {}
     if payload.get("callback_query"):
@@ -182,6 +182,9 @@ def webhook():
         else:
             # No dispatch or DB persistence yet; do not falsely confirm a real booking.
             st["delay"]=0 if text==s[7] else 15 if text==s[8] else 30
+            if not DATABASE_URL or not DISPATCH:
+                send(cid,"Оформление заказов временно недоступно: сервер подключается к диспетчерской. Попробуйте позже.")
+                return jsonify(ok=True)
             try:
                 oid,km,price=make_order(uid,msg["from"].get("username"),st)
                 result=dispatch_order(oid,st,km,price)
