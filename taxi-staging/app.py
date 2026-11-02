@@ -196,7 +196,7 @@ def webhook():
             send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
         elif text in options:
             st["step"]="section"
-            send(cid,options[options.index(text)]+"\\n\\n"+UNAVAILABLE[lang],keyboard([BACK[lang]]))
+            send(cid,options[options.index(text)]+"\n\n"+UNAVAILABLE[lang],keyboard([BACK[lang]]))
         else:
             show_menu(cid,st)
     elif st["step"]=="section":
