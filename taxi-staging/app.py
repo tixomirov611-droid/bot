@@ -48,7 +48,9 @@ def show_menu(cid,st):
     st["step"]="menu"
     st.pop("submitting",None)
     lang=st.get("lang","uk")
-    send(cid,{"uk":"🚕 Головне меню NikCar Taxi","ru":"🚕 Главное меню NikCar Taxi","en":"🚕 NikCar Taxi main menu"}.get(lang,"🚕 NikCar Taxi"),main_keyboard(lang))
+    heading={"uk":"🚕 Головне меню NikCar Taxi","ru":"🚕 Главное меню NikCar Taxi","en":"🚕 NikCar Taxi main menu"}.get(lang,"🚕 NikCar Taxi")
+    notice={"uk":"⚠️ Увага! Бот може переходити в режим сну. Іноді відповідь на команду може тривати до 30 секунд. Будь ласка, зачекайте й не надсилайте команду повторно.","ru":"⚠️ Внимание! Бот может переходить в спящий режим. Иногда ожидание ответа на команду может достигать 30 секунд. Пожалуйста, подождите и не отправляйте команду повторно.","en":"⚠️ Notice: The bot may go to sleep. Occasionally, a command response may take up to 30 seconds. Please wait and avoid sending the command again."}.get(lang,"")
+    send(cid,heading+"\n\n"+notice,main_keyboard(lang))
 
 # Session state is transient; registrations are stored separately.
 states = {}
