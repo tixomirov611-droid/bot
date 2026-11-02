@@ -27,6 +27,26 @@ STRINGS = {
  "ru": ("Добро пожаловать в NikCar Taxi! Отправьте телефон для регистрации.", "Поделиться номером", "Заказать такси", "Отправьте геолокацию места посадки.", "Теперь отправьте геолокацию пункта назначения.", "Сколько пассажиров? (1–4)", "Когда подать машину?", "Сейчас", "Через 15 мин", "Через 30 мин", "Заявка принята. Ожидайте подтверждения диспетчера."),
  "en": ("Welcome to NikCar Taxi! Share your phone to register.", "Share phone", "Order taxi", "Send pickup location.", "Now send destination location.", "How many passengers? (1–4)", "When do you need pickup?", "Now", "In 15 min", "In 30 min", "Request received. Await dispatcher confirmation.")
 }
+
+MENU = {
+ "uk": ["🚕 Замовити таксі","🛣 Міжмісто","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурити авто","🚕 Робота в таксі (оренда авто)","ℹ️ Як користуватися"],
+ "ru": ["🚕 Заказать такси","🛣 Межгород","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурить авто","🚕 Работа в такси (аренда авто)","ℹ️ Как пользоваться"],
+ "en": ["🚕 Order taxi","🛣 Intercity","📦 Delivery","👨‍✈️ Driver","🪝 Towing","🔋 Jump start","🚕 Taxi jobs (car rental)","ℹ️ How to use"]
+}
+BACK = {"uk":"⬅️ Головне меню","ru":"⬅️ Главное меню","en":"⬅️ Main menu"}
+UNAVAILABLE = {
+ "uk":"Цей розділ поки не підключено до диспетчерської. Заявка не створена.",
+ "ru":"Этот раздел пока не подключён к диспетчерской. Заявка не создана.",
+ "en":"This section is not yet connected to dispatch. No request was created."
+}
+def main_keyboard(lang):
+    items=MENU.get(lang,MENU["uk"])
+    return {"keyboard":[[{"text":items[0]},{"text":items[1]}],[{"text":items[2]},{"text":items[3]}],[{"text":items[4]},{"text":items[5]}],[{"text":items[6]}],[{"text":items[7]}]],"resize_keyboard":True}
+def show_menu(cid,st):
+    st["step"]="menu"
+    lang=st.get("lang","uk")
+    send(cid,{"uk":"🚕 Головне меню NikCar Taxi","ru":"🚕 Главное меню NikCar Taxi","en":"🚕 NikCar Taxi main menu"}.get(lang,"🚕 NikCar Taxi"),main_keyboard(lang))
+
 # Ephemeral state: use persistent database before production use.
 states = {}
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -163,10 +183,24 @@ def webhook():
             send(cid,STRINGS[st["lang"]][0])
         else:
             st.update(step="menu",phone=contact["phone_number"])
-            send(cid,"NikCar Taxi",keyboard([STRINGS[st["lang"]][2]]))
+            show_menu(cid,st)
+    elif text in (BACK.get(st.get("lang","uk")), "/menu", "/cancel") and st.get("step") not in ("lang","phone"):
+        show_menu(cid,st)
     elif st["step"]=="menu":
-        st["step"]="origin"
-        send(cid,STRINGS[st["lang"]][3],{"keyboard":[[{"text":"📍 Location","request_location":True}]],"resize_keyboard":True})
+        lang=st.get("lang","uk")
+        options=MENU.get(lang,MENU["uk"])
+        if text==options[0]:
+            st["step"]="origin"
+            send(cid,STRINGS[lang][3],{"keyboard":[[{"text":"📍 Location","request_location":True}],[{"text":BACK[lang]}]],"resize_keyboard":True})
+        elif text==options[7]:
+            send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
+        elif text in options:
+            st["step"]="section"
+            send(cid,options[options.index(text)]+"\\n\\n"+UNAVAILABLE[lang],keyboard([BACK[lang]]))
+        else:
+            show_menu(cid,st)
+    elif st["step"]=="section":
+        show_menu(cid,st)
     elif st["step"] in ("origin","destination"):
         if not msg.get("location"):
             send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4])
@@ -200,7 +234,7 @@ def webhook():
                     send(cid,"Заказ сохранён, но отправка диспетчеру не удалась. Позвоните диспетчеру.")
                 else:
                     send(cid,f"Заказ #{oid} передан диспетчеру. Ориентир: {price:.0f} грн (расстояние по прямой).",keyboard([s[2]]))
-                st.update(step="menu")
+                show_menu(cid,st)
             except Exception:
                 app.logger.exception("Order failed")
                 send(cid,"Не удалось оформить заказ. Повторите позже.")
