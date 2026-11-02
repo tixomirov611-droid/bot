@@ -1,1 +1,20 @@
-The requested file reference is not currently visible. Use files.search or files.list to rediscover the file, then retry with a returned ref_id or file_id.
+plugins { id 'com.android.application' }
+android {
+    namespace 'ua.nikcar.fleet'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'ua.nikcar.nativefleet'
+        minSdk 26
+        targetSdk 36
+        versionCode 10
+        versionName '1.0.0-native-pilot'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.debug' }
+        release { minifyEnabled false }
+    }
+}
