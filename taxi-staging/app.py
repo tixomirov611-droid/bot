@@ -12,6 +12,7 @@ import threading
 import time
 import math
 import secrets
+import sqlite3
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import urllib.request
@@ -48,8 +49,30 @@ def show_menu(cid,st):
     lang=st.get("lang","uk")
     send(cid,{"uk":"🚕 Головне меню NikCar Taxi","ru":"🚕 Главное меню NikCar Taxi","en":"🚕 NikCar Taxi main menu"}.get(lang,"🚕 NikCar Taxi"),main_keyboard(lang))
 
-# Ephemeral state: use persistent database before production use.
+# Session state is transient; registrations are stored separately.
 states = {}
+REGISTRY_PATH = os.getenv("REGISTRY_PATH", "/tmp/nikcar_registrations.sqlite3")
+def registration_db():
+    conn=sqlite3.connect(REGISTRY_PATH, timeout=5)
+    conn.execute("CREATE TABLE IF NOT EXISTS registrations (user_id INTEGER PRIMARY KEY, lang TEXT NOT NULL, phone TEXT NOT NULL)")
+    return conn
+def load_registration(uid):
+    try:
+        with registration_db() as conn:
+            row=conn.execute("SELECT lang,phone FROM registrations WHERE user_id=?",(uid,)).fetchone()
+        return {"lang":row[0],"phone":row[1]} if row else None
+    except Exception:
+        app.logger.exception("Registration lookup failed")
+        return None
+def save_registration(uid,lang,phone):
+    try:
+        with registration_db() as conn:
+            conn.execute("INSERT INTO registrations(user_id,lang,phone) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET lang=excluded.lang,phone=excluded.phone",(uid,lang,phone))
+        return True
+    except Exception:
+        app.logger.exception("Registration save failed")
+        return False
+
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 DISPATCH = os.getenv("DISPATCH_CHAT_ID", "")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET") or (hashlib.sha256(("nikcar-webhook-v1:"+TOKEN).encode()).hexdigest() if TOKEN else "")
@@ -204,13 +227,21 @@ def webhook():
     text=(msg.get("text") or "").strip()
     uid=(msg.get("from") or {}).get("id")
     if not uid or (msg.get("chat") or {}).get("type")!="private": return jsonify(ok=True)
-    st=states.setdefault(uid,{"step":"lang","lang":"uk"})
+    if uid not in states:
+        reg=load_registration(uid)
+        states[uid]={"step":"menu","lang":reg["lang"],"phone":reg["phone"]} if reg else {"step":"lang","lang":"uk"}
+    st=states[uid]
     if text in ("/menu","/cancel","❌ Отмена / Скасувати") and st.get("step") not in ("lang","phone"):
         show_menu(cid,st)
         return jsonify(ok=True)
     if text=="/start":
-        st.clear();st.update(step="lang",lang="uk")
-        send(cid,"Вас вітає NikCar Taxi / Welcome to NikCar Taxi. Оберіть мову / Choose language",keyboard(list(LANGS)))
+        reg=load_registration(uid)
+        if reg or st.get("phone"):
+            st.clear();st.update(step="menu",lang=(reg or st)["lang"],phone=(reg or st)["phone"])
+            show_menu(cid,st)
+        else:
+            st.clear();st.update(step="lang",lang="uk")
+            send(cid,"Вас вітає NikCar Taxi / Welcome to NikCar Taxi. Оберіть мову / Choose language",keyboard(list(LANGS)))
         return jsonify(ok=True)
     if st["step"]=="lang":
         if text not in LANGS:
@@ -225,6 +256,7 @@ def webhook():
             send(cid,STRINGS[st["lang"]][0])
         else:
             st.update(step="menu",phone=contact["phone_number"])
+            save_registration(uid,st["lang"],st["phone"])
             show_menu(cid,st)
     elif text in (BACK.get(st.get("lang","uk")), "/menu", "/cancel") and st.get("step") not in ("lang","phone"):
         show_menu(cid,st)
