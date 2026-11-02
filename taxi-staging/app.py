@@ -176,9 +176,12 @@ def dispatch_message(oid,st,km=None,price=None):
     origin=geocode_point(st["origin"])
     destination=geocode_point(st["destination"])
     if origin:
-        lines.append(f"📍 Точка подачи (карта): https://www.openstreetmap.org/?mlat={origin[0]}&mlon={origin[1]}#map=16/{origin[0]}/{origin[1]}")
+        pickup=f"{origin[0]},{origin[1]}"
+        lines.append("📍 Подача (Google Maps): https://www.google.com/maps/search/?"+urllib.parse.urlencode({"api":1,"query":pickup}))
+        lines.append("🚗 Waze — ехать к клиенту: https://waze.com/ul?"+urllib.parse.urlencode({"ll":pickup,"navigate":"yes"}))
     if origin and destination:
-        lines.append(f"🧭 Маршрут (карта): https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route={origin[0]},{origin[1]};{destination[0]},{destination[1]}")
+        route_url="https://www.google.com/maps/dir/?"+urllib.parse.urlencode({"api":1,"origin":f"{origin[0]},{origin[1]}","destination":f"{destination[0]},{destination[1]}","travelmode":"driving"})
+        lines.append("🗺 Маршрут Google Maps: "+route_url)
     return "\n".join(lines)
 
 def dispatch_direct(uid,username,st):
