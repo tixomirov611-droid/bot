@@ -57,11 +57,26 @@ const t=k=>ADDITIONS[lang]?.[k]||UICONSOLE[lang]?.[k]||TRANSLATIONS[lang][k]||k;
 const e=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const d=x=>x?new Date(x).toLocaleString(lang==='uk'?'uk-UA':'en-GB',{dateStyle:'short',timeStyle:'short'}):'—';
 const money=x=>Number(x||0).toLocaleString(lang==='uk'?'uk-UA':'en-GB')+' ₴';
-let sb=null,user=null,me=null,records={cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[]};
+const emptyRecords=()=>({cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[]});
+let sb=null,user=null,me=null,records=emptyRecords();
 const driverTabs=[['cars','🚙'],['announcements','◉'],['requests','▤'],['payments','₴'],['documents','📄'],['chat','💬'],['sos','🆘'],['account','◯']];
 const ownerTabs=[['dashboard','⌂'],['cars','🚙'],['drivers','♙'],['requests','▤'],['payments','₴'],['repairs','⚒'],['documents','📄'],['announcements','◉'],['chat','💬'],['sos','🆘'],['account','◯']];
 const tabsForRole=()=>isOwner()?ownerTabs:driverTabs;
 let carEditor=null;let sessionInitialized=false;let showMore=false;let currentRepair=null;
+let selectedDriverId=null,currentAuthUserId=null,loadVersion=0,lastForegroundRefresh=0;
+function clearAccountState(){
+ loadVersion++;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
+ sessionInitialized=false;showMore=false;page='cars';lastAuthEmail='';
+ mode='signin';authMethod='password';authNotice='';authNoticeIsError=false;
+}
+function refreshWhenVisible(){
+ if(document.visibilityState==='hidden'||!sb||!user||recoveryMode)return;
+ const now=Date.now();
+ if(now-lastForegroundRefresh<12000)return;
+ lastForegroundRefresh=now;void load();
+}
+window.addEventListener('focus',refreshWhenVisible);
+document.addEventListener('visibilitychange',refreshWhenVisible);
 function toast(msg){const n=document.getElementById('toast');n.textContent=String(msg);n.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>n.classList.remove('show'),4300)}
 function status(s){const v=['rejected','cancelled','blocked'].includes(s)?'danger':['pending','claimed','candidate','declared'].includes(s)?'warn':'';return `<span class="tag ${v}">${e(t(s||'unknown'))}</span>`}
 function profile(id){return records.profiles.find(x=>x.id===id)}
@@ -170,8 +185,9 @@ function uploadItem(kind,driver,car=null){const doc=docFor(kind,driver,car);cons
  const own=me?.id===driver;
  return `<div class="line"><div style="min-width:0"><b>${e(t(kind))}</b><div class="small">${doc?`${t('docsDone')} · ${d(doc.created_at)}`:t('docsWaiting')}</div>${val}</div><div class="actions">${doc?`<button type="button" class="btn secondary tiny" data-action="open-doc" data-id="${e(doc.id)}">${t('openDocument')}</button>`:''}${own&&(!['rental_contract'].includes(kind)||car)?`<label class="btn secondary tiny" style="cursor:pointer">${t('upload')}<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden data-doc-kind="${kind}" data-car="${car||''}" /></label>`:''}</div></div>`;}
 function documentsPage(){if(isOwner()){
- const profiles=records.profiles.filter(p=>p.role==='driver');
- const lines=profiles.map(p=>{const docs=records.driver_documents.filter(d=>d.driver_id===p.id);return `<div class="card"><h2>${e(p.full_name||'—')}</h2><div class="small">${e(p.phone||'')} · ${e(p.access||'')}</div>${docs.length?docs.map(d=>`<div class="line"><div>${e(t(d.kind))}${d.car_id?` <span class="small">· ${e(carName(d.car_id))}</span>`:''}</div><button class="btn secondary tiny" data-action="open-doc" data-id="${e(d.id)}">${t('openDocument')}</button></div>`).join(''):`<p>${t('docsWaiting')}</p>`}</div>`;}).join('');return `<div class="banner warning">${t('docOwnerNote')}</div><div class="cards">${lines||`<div class="card">${t('empty')}</div>`}</div>`;
+ const selectedDriver=selectedDriverId&&records.profiles.some(p=>p.id===selectedDriverId&&p.role==='driver')?selectedDriverId:null;
+ const profiles=records.profiles.filter(p=>p.role==='driver'&&(!selectedDriver||p.id===selectedDriver));
+ const lines=profiles.map(p=>{const docs=records.driver_documents.filter(d=>d.driver_id===p.id);return `<div class="card"><h2>${e(p.full_name||'—')}</h2><div class="small">${e(p.phone||'')} · ${e(p.access||'')}</div>${docs.length?docs.map(d=>`<div class="line"><div>${e(t(d.kind))}${d.car_id?` <span class="small">· ${e(carName(d.car_id))}</span>`:''}</div><button class="btn secondary tiny" data-action="open-doc" data-id="${e(d.id)}">${t('openDocument')}</button></div>`).join(''):`<p>${t('docsWaiting')}</p>`}</div>`;}).join('');return `<div class="banner warning">${t('docOwnerNote')}${selectedDriver?` · ${e(name(selectedDriver))}`:''}</div>${selectedDriver?`<button class="btn secondary tiny" data-action="all-driver-docs" style="margin-bottom:12px">${lang==='uk'?'Показати всіх водіїв':'Show all drivers'}</button>`:''}<div class="cards">${lines||`<div class="card">${t('empty')}</div>`}</div>`;
  }
  if(!me||me.role!=='driver')return '';
  const car=records.cars.find(c=>c.id===selectedCar);
@@ -211,9 +227,33 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
 function render(){document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
-async function load(){if(!sb||!user){me=null;render();return;}try{const {data, error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at').eq('user_id',user.id).maybeSingle();if(error)throw error;me=data;if(me&&isOwner()&&!sessionInitialized)page='dashboard';sessionInitialized=true;if(me){const targets=[sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,full_name,phone,role,access'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];const data=await Promise.all(targets);for(let i=0;i<data.length;i++){if(data[i].error)throw data[i].error;records[['payment_claims','repair_jobs','repair_parts','expense_entries','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'][i]]=data[i].data||[];}}render();}catch(err){toast(`${t('systemError')}: ${err.message||err}`);render();}}
-async function mutation(promise,success){const {error,data}=await promise;if(error){toast(error.message);return;}if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return;}toast(success||'OK');await load();}
-async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='nav'){showMore=false;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){await sb.auth.signOut();user=null;me=null;sessionInitialized=false;setRecoveryMode(false);page='cars';render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
+async function load(){
+ if(!sb||!user){me=null;records=emptyRecords();render();return;}
+ const expectedUserId=user.id,version=++loadVersion;
+ try{
+  const {data,error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at').eq('user_id',expectedUserId).maybeSingle();
+  if(version!==loadVersion||user?.id!==expectedUserId)return;
+  if(error)throw error;
+  me=data;
+  if(me&&isOwner()&&!sessionInitialized)page='dashboard';
+  sessionInitialized=true;
+  if(me){
+   const targets=[sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,full_name,phone,role,access'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];
+   const loaded=await Promise.all(targets);
+   if(version!==loadVersion||user?.id!==expectedUserId)return;
+   const keys=['payment_claims','repair_jobs','repair_parts','expense_entries','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'];
+   const nextRecords=emptyRecords();
+   for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
+   records=nextRecords;
+  }else records=emptyRecords();
+  render();
+ }catch(err){
+  if(version!==loadVersion||user?.id!==expectedUserId)return;
+  toast(`${t('systemError')}: ${err.message||err}`);render();
+ }
+}
+async function mutation(promise,success){const {error,data}=await promise;if(error){toast(error.message);return false;}if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}toast(success||'OK');await load();return true;}
+async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='nav'){showMore=false;if(btn.dataset.page==='documents'&&isOwner())selectedDriverId=null;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){const {error}=await sb.auth.signOut();if(error)throw error;user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
  if(a==='select-repair'){currentRepair=id;page='repairs';render();return;}
  if(a==='voice-repair'){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(t('repairVoiceUnavailable'));return;}const speech=new SR();speech.lang=lang==='uk'?'uk-UA':'en-US';speech.interimResults=false;speech.maxAlternatives=1;speech.onresult=event=>{const input=document.getElementById('repair-voice-target');if(input)input.value=(input.value+' '+event.results[0][0].transcript).trim();};speech.onerror=()=>toast(t('repairVoiceUnavailable'));speech.start();return;}
  if(a==='confirm-payment'||a==='reject-payment'){if(!isOwner())return;const pay=records.payment_claims.find(p=>p.id===id);if(!pay||pay.status!=='declared')return;const proceed=window.confirm(`${t(a==='confirm-payment'?'confirmPayment':'rejectPayment')} · ${money(pay.amount)}?`);if(!proceed)return;const {error}=await sb.rpc('nikcar_decide_payment',{p_id:id,p_confirm:a==='confirm-payment',p_note:''});if(error)throw error;toast(t(a==='confirm-payment'?'confirmed':'rejected'));await load();return;}
@@ -221,7 +261,7 @@ async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(
  if(a==='remove-part'){if(!isOwner())return;const item=records.repair_parts.find(x=>x.id===id);if(!item||records.repair_jobs.find(x=>x.id===item.repair_id)?.status!=='draft')return;await mutation(sb.from('repair_parts').delete().eq('id',id));return;} 
  if(a==='edit-car'){if(!isOwner())return;carEditor=id;page='cars';render();return;}
  if(a==='cancel-car-edit'){carEditor=null;render();return;}
- if(a==='driver-docs'){if(!isOwner())return;page='documents';render();return;}
+ if(a==='driver-docs'){if(!isOwner())return;const driver=records.profiles.find(p=>p.id===id&&p.role==='driver');if(!driver)return;selectedDriverId=driver.id;page='documents';render();window.scrollTo(0,0);return;}if(a==='all-driver-docs'){if(!isOwner())return;selectedDriverId=null;page='documents';render();return;}
  if(a==='set-driver-access'){
   if(!isOwner())return;const sel=document.querySelector(`select[data-driver-id="${id}"]`);const desired=sel?.value;
   if(!desired||!window.confirm(t('confirmChange')))return;
@@ -287,8 +327,8 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   if(!isOwner())return;await mutation(sb.from('announcements').insert({author_id:me.id,title_uk:String(f.get('title_uk')||'').trim(),title_en:String(f.get('title_en')||'').trim(),body_uk:String(f.get('body_uk')||'').trim(),body_en:String(f.get('body_en')||'').trim(),pinned:f.get('pinned')==='on'}));return;
  }
  if(form.id==='edit-car-form'){
-  if(!isOwner())return;const carId=String(f.get('id')||'');carEditor=null;
-  await mutation(sb.from('cars').update({plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}).eq('id',carId));return;
+  if(!isOwner())return;const carId=String(f.get('id')||'');
+  const saved=await mutation(sb.from('cars').update({plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}).eq('id',carId));if(saved){carEditor=null;render();}return;
  }
  if(form.id==='new-car'){await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));return;}
  if(form.id==='chat-send'){await mutation(sb.from('chat_messages').insert({sender_id:me.id,body:String(f.get('text')).trim()}));return;}
@@ -300,13 +340,17 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
  sb=mod.createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
  // Subscribe FIRST: Supabase can emit PASSWORD_RECOVERY while processing the URL/session.
  sb.auth.onAuthStateChange((event,s)=>{
-  user=s?.user||null;
+  const nextUser=s?.user||null,nextId=nextUser?.id||null;
+  if(nextId!==currentAuthUserId){clearAccountState();currentAuthUserId=nextId;}
+  user=nextUser;
   if(event==='PASSWORD_RECOVERY')setRecoveryMode(true);
   if(event==='SIGNED_OUT')setRecoveryMode(false);
   if(event!=='INITIAL_SESSION')setTimeout(()=>load(),0);
  });
  const {data:{session},error}=await sb.auth.getSession();
  if(error)throw error;
+ const initialId=session?.user?.id||null;
+ if(initialId!==currentAuthUserId){clearAccountState();currentAuthUserId=initialId;}
  user=session?.user||null;
  if(!user&&recoveryMode){setRecoveryMode(false);mode='reset';authNotice=lang==='uk'?'Посилання відновлення недійсне або термін його дії минув. Запитайте новий лист.':'Recovery link is invalid or expired. Request a new email.';}
  await load();
