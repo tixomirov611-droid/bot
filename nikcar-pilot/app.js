@@ -83,11 +83,9 @@ function authPage(){
   {id:'azure',title:'Microsoft',mark:'▦',type:'microsoft'},
   {id:'github',title:'GitHub',mark:'GH',type:'github'}
  ];
- const providerCards=providers.map(p=>oauthEnabled[p.id]?
-  `<button type="button" class="sso-option" data-action="oauth" data-provider="${p.id}" aria-label="${lang==='uk'?'Продовжити через':'Continue with'} ${p.title}"><span class="sso-mark sso-${p.type}" aria-hidden="true">${p.mark}</span><span>${p.title}</span><span class="sso-available" aria-hidden="true">↗</span></button>`:
-  `<div class="sso-option sso-pending" aria-label="${p.title}: ${lang==='uk'?'ще не підключено':'not connected'}"><span class="sso-mark sso-${p.type}" aria-hidden="true">${p.mark}</span><span>${p.title}</span><span class="sso-soon">${lang==='uk'?'Скоро':'Soon'}</span></div>`).join('');
- const socials=`<div class="sso-section"><div class="sso-divider"><span>${lang==='uk'?'Інші сервіси входу':'Other sign-in services'}</span></div><div class="sso-grid">${providerCards}</div><p class="sso-hint">${lang==='uk'?'Доступні способи працюють через захищений Supabase OAuth. Інші підключимо після налаштування провайдерів.':'Available providers use secure Supabase OAuth. Other options require provider setup.'}</p></div>`;
- const methodTabs=!recovering&&mode==='signin'?`<div class="auth-method-tabs" role="group" aria-label="${lang==='uk'?'Оберіть спосіб входу':'Choose sign-in method'}"><button type="button" class="auth-method ${authMethod==='password'?'active':''}" data-action="auth-method" data-value="password">${lang==='uk'?'Пароль':'Password'}</button><button type="button" class="auth-method ${authMethod==='magic'?'active':''}" data-action="auth-method" data-value="magic">${lang==='uk'?'Посилання на email':'Email link'}</button></div>`:'';
+ const providerCards=providers.filter(p=>oauthEnabled[p.id]===true).map(p=>`<button type="button" class="sso-option" data-action="oauth" data-provider="${p.id}" aria-label="${lang==='uk'?'Продовжити через':'Continue with'} ${p.title}"><span class="sso-mark sso-${p.type}" aria-hidden="true">${p.mark}</span><span>${p.title}</span><span class="sso-available" aria-hidden="true">↗</span></button>`).join('');
+ const socials=providerCards?`<div class="sso-section"><div class="sso-divider"><span>${lang==='uk'?'Продовжити через':'Continue with'}</span></div><div class="sso-grid">${providerCards}</div></div>`:'';
+ const methodTabs=!recovering&&mode==='signin'?`<div class="auth-compact-link" role="group" aria-label="${lang==='uk'?'Оберіть спосіб входу':'Choose sign-in method'}"><button type="button" class="auth-small-link ${authMethod==='password'?'active':''}" data-action="auth-small-link" data-value="password">${lang==='uk'?'Пароль':'Password'}</button><button type="button" class="auth-small-link ${authMethod==='magic'?'active':''}" data-action="auth-small-link" data-value="magic">${lang==='uk'?'Посилання на email':'Email link'}</button></div>`:'';
 
  return `<div class="auth-layout v09-auth">
   <aside class="auth-visual" aria-label="${lang==='uk'?'Ілюстрація NikCar':'NikCar illustration'}">
@@ -100,12 +98,12 @@ function authPage(){
     <div class="auth-intro"><span class="eyebrow">${lang==='uk'?'КАБІНЕТ NIKCAR':'NIKCAR PORTAL'}</span><h1>${head}</h1><p>${authSubtitle}</p></div>
     ${authNotice?`<div class="banner" role="status">${e(authNotice)}</div>`:''}
     ${!recovering&&mode!=='reset'?`<div class="auth-tabs" role="group" aria-label="${lang==='uk'?'Вхід або реєстрація':'Sign in or register'}"><button type="button" class="auth-tab ${mode==='signin'?'active':''}" data-action="auth-mode" data-value="signin">${t('signin')}</button><button type="button" class="auth-tab ${mode==='signup'?'active':''}" data-action="auth-mode" data-value="signup">${t('signup')}</button></div>`:''}
-    ${methodTabs}
     ${form}
+    ${methodTabs}
     ${magic?`<p class="magic-hint">${lang==='uk'?'Надішлемо одноразове посилання тільки для вже зареєстрованого акаунта.':'We will send a one-time link for existing accounts only.'}</p>`:''}
     ${recovering?'':`<div class="auth-helper">${mode==='reset'?`<button type="button" class="btn" data-action="auth-mode" data-value="signin">${t('signin')}</button>`:`<button type="button" class="btn" data-action="auth-mode" data-value="reset">${t('forgot')}</button>`}</div>
     <details class="auth-info"><summary>${lang==='uk'?'Не отримали лист для підтвердження?':'Did not receive your confirmation email?'}</summary><p>${t('authConfirmHelp')}</p><button type="button" class="btn secondary tiny" data-action="resend-confirm">${t('authResend')}</button></details>
-    ${mode==='signin'||mode==='signup'?socials:''}`}
+    ${mode==='signin'?socials:''}`}
     <div class="auth-footer-note">${t('onlyPilot')}</div>
   </section>
  </div>`;
