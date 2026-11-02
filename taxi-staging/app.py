@@ -7,6 +7,9 @@ until an explicit, separately verified cutover.
 import os
 import json
 import hmac
+import hashlib
+import threading
+import time
 import math
 import secrets
 from datetime import datetime, timedelta
@@ -28,7 +31,7 @@ STRINGS = {
 states = {}
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 DISPATCH = os.getenv("DISPATCH_CHAT_ID", "")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET") or (hashlib.sha256(("nikcar-webhook-v1:"+TOKEN).encode()).hexdigest() if TOKEN else "")
 TZ = ZoneInfo("Europe/Kyiv")
 def connect():
     if not DATABASE_URL: raise RuntimeError("DATABASE_URL missing")
@@ -197,3 +200,23 @@ def webhook():
                 app.logger.exception("Order failed")
                 send(cid,"Не удалось оформить заказ. Повторите позже.")
     return jsonify(ok=True)
+
+
+# Register the Telegram webhook using the token stored only in Render environment.
+def _register_webhook():
+    if not TOKEN: 
+        app.logger.error("BOT_TOKEN missing; cannot register Telegram webhook")
+        return
+    target = os.getenv("WEBHOOK_URL", "https://nikcar-taxi-staging.onrender.com/telegram/webhook")
+    for attempt in range(4):
+        try:
+            result = api("setWebhook", {"url": target, "secret_token": WEBHOOK_SECRET, "allowed_updates": ["message", "callback_query"], "drop_pending_updates": False})
+            if result.get("ok"):
+                app.logger.warning("Telegram webhook registered successfully")
+                return
+            app.logger.error("Telegram setWebhook rejected: %s", result.get("description", "unknown"))
+        except Exception:
+            app.logger.exception("Telegram webhook registration failed")
+        time.sleep(5 * (attempt + 1))
+
+threading.Thread(target=_register_webhook, daemon=True).start()
