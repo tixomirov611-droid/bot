@@ -86,30 +86,21 @@ def distance(a,b):
     x1,x2=math.radians(a["latitude"]),math.radians(b["latitude"])
     dx=x2-x1;dy=math.radians(b["longitude"]-a["longitude"])
     return 12742*math.asin(min(1,math.sqrt(math.sin(dx/2)**2+math.cos(x1)*math.cos(x2)*math.sin(dy/2)**2)))
-GOOGLE_MAPS_API_KEY=os.getenv("GOOGLE_MAPS_API_KEY","")
-def route_point(p):
-    if p.get("address"):
-        address=p["address"]
-        if not any(x in address.casefold() for x in ("николаев","миколаїв","mykolaiv","украина","україна","ukraine")):
-            address+=", Миколаїв, Україна"
-        return address
-    return f"{p['latitude']},{p['longitude']}"
 def route_estimate(st):
-    """Google Directions driving distance in km, or None if unavailable."""
-    if not GOOGLE_MAPS_API_KEY:
+    """OSRM road distance for coordinate points; text addresses require geocoding."""
+    points=[st["origin"],st["destination"]]
+    if any("latitude" not in p or "longitude" not in p for p in points):
         return None
-    query=urllib.parse.urlencode({"origin":route_point(st["origin"]),"destination":route_point(st["destination"]),"mode":"driving","language":"ru","region":"ua","key":GOOGLE_MAPS_API_KEY})
+    a,b=points
+    coords=f"{a['longitude']},{a['latitude']};{b['longitude']},{b['latitude']}"
+    url="https://router.project-osrm.org/route/v1/driving/"+coords+"?overview=false"
     try:
-        with urllib.request.urlopen("https://maps.googleapis.com/maps/api/directions/json?"+query,timeout=8) as resp:
-            data=json.load(resp)
-        if data.get("status")!="OK" or not data.get("routes"):
-            app.logger.warning("Google Directions unavailable: %s",data.get("status"))
-            return None
-        legs=data["routes"][0]["legs"]
-        km=sum(leg["distance"]["value"] for leg in legs)/1000
-        return round(km,2) if km>0 else None
+        req=urllib.request.Request(url,headers={"User-Agent":"NikCarTaxi/1.0"})
+        with urllib.request.urlopen(req,timeout=8) as resp: data=json.load(resp)
+        if data.get("code")!="Ok" or not data.get("routes"): return None
+        return round(data["routes"][0]["distance"]/1000,2)
     except Exception:
-        app.logger.exception("Google driving route calculation failed")
+        app.logger.exception("OSRM routing failed")
         return None
 def fare_estimate(km,delay=0):
     if km is None: return None
@@ -127,7 +118,7 @@ def make_order(uid,username,st):
             price=(float(t["night_base"])+float(t["night_per_km"])*km if night else float(t["day_base"])+float(t["day_per_km"])*max(0,km-float(t["day_included_km"])))
             oid=secrets.token_hex(6)
             q.execute("""INSERT INTO nikcar_taxi.orders(id,type,status,client_id,client_username,client_phone,scheduled_at,base_price,km,passengers,origin,destination,meta)
-            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"google_driving_route" if st.get("route_km") else "straight_line","night":night,"car_class":st.get("car_class","Standard"),"payment":st.get("payment","Наличные")})))
+            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"osrm_driving_route" if st.get("route_km") else "straight_line","night":night,"car_class":st.get("car_class","Standard"),"payment":st.get("payment","Наличные")})))
             q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
@@ -151,7 +142,7 @@ def dispatch_direct(uid,username,st):
         f"Подача: {'сейчас' if not st.get('delay') else 'через '+str(st['delay'])+' мин'}",
         f"📍 Посадка: {location_label(st['origin'])}",
         f"🏁 Назначение: {location_label(st['destination'])}",
-        f"🚗 Маршрут Google Maps: {km:.1f} км" if km is not None else "🚗 Расстояние: уточняет диспетчер",
+        f"🚗 Маршрут по дорогам: {km:.1f} км" if km is not None else "🚗 Расстояние: уточняет диспетчер",
         f"💰 Ориентировочно: {price} грн" if price is not None else "💰 Стоимость: уточняет диспетчер",
         "⚠️ Заказ без записи в БД. Диспетчер подтверждает вручную."
     ]
@@ -382,7 +373,7 @@ def webhook():
                 f"🚘 Класс: {st.get('car_class','Standard')}",
                 f"💳 Оплата: {'карта' if st.get('payment')=='card' else 'наличные'}",
                 f"🕒 Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}",
-                f"🚗 Маршрут Google Maps: {km:.1f} км" if km is not None else "🚗 Расстояние: пока не рассчитано",
+                f"🚗 Маршрут по дорогам: {km:.1f} км" if km is not None else "🚗 Расстояние: пока не рассчитано",
                 f"💰 Ориентировочная стоимость: {st['route_price']} грн" if st["route_price"] is not None else "💰 Стоимость уточнит диспетчер",
                 "Подтвердить заказ? / Підтвердити замовлення?"
             ]
