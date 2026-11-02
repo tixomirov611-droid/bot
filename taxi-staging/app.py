@@ -44,6 +44,7 @@ def main_keyboard(lang):
     return {"keyboard":[[{"text":items[0]},{"text":items[1]}],[{"text":items[2]},{"text":items[3]}],[{"text":items[4]},{"text":items[5]}],[{"text":items[6]}],[{"text":items[7]},{"text":items[8]}],[{"text":items[9]},{"text":items[10]}],[{"text":items[11]}]],"resize_keyboard":True}
 def show_menu(cid,st):
     st["step"]="menu"
+    st.pop("submitting",None)
     lang=st.get("lang","uk")
     send(cid,{"uk":"🚕 Головне меню NikCar Taxi","ru":"🚕 Главное меню NikCar Taxi","en":"🚕 NikCar Taxi main menu"}.get(lang,"🚕 NikCar Taxi"),main_keyboard(lang))
 
@@ -156,6 +157,16 @@ def api(method, payload):
         return {"ok": False}
 def keyboard(items, request_contact=False):
     return {"keyboard": [[{"text": items[0], **({"request_contact": True} if request_contact else {})}]] if request_contact else [[{"text": x} for x in items]], "resize_keyboard": True}
+def step_keyboard(lang, choices=None, location=False):
+    rows=[]
+    if location:
+        label={"uk":"📍 Надіслати геолокацію","ru":"📍 Отправить геолокацию","en":"📍 Send location"}.get(lang,"📍 Location")
+        rows.append([{"text":label,"request_location":True}])
+    elif choices:
+        rows.extend([[{"text":v} for v in choices[i:i+2]] for i in range(0,len(choices),2)])
+    rows.append([{"text":BACK.get(lang,BACK["uk"])}])
+    return {"keyboard":rows,"resize_keyboard":True}
+
 def send(cid, text, kb=None):
     p={"chat_id":cid,"text":text}
     if kb: p["reply_markup"]=kb
@@ -217,7 +228,7 @@ def webhook():
         options=MENU.get(lang,MENU["uk"])
         if text==options[0]:
             st["step"]="origin"
-            send(cid,STRINGS[lang][3],{"keyboard":[[{"text":"📍 Location","request_location":True}],[{"text":BACK[lang]}]],"resize_keyboard":True})
+            send(cid,STRINGS[lang][3],step_keyboard(lang,location=True))
         elif text==options[7]:
             send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
         elif text==options[8]:
@@ -249,32 +260,32 @@ def webhook():
         show_menu(cid,st)
     elif st["step"] in ("origin","destination"):
         if not msg.get("location"):
-            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4],keyboard([BACK[st["lang"]]]))
+            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4],step_keyboard(st["lang"],location=True))
         elif st["step"]=="origin":
             st.update(origin=msg["location"],step="destination")
-            send(cid,STRINGS[st["lang"]][4])
+            send(cid,STRINGS[st["lang"]][4],step_keyboard(st["lang"],location=True))
         else:
             st.update(destination=msg["location"],step="passengers")
-            send(cid,STRINGS[st["lang"]][5],keyboard(["1","2","3","4"]))
+            send(cid,STRINGS[st["lang"]][5],step_keyboard(st["lang"],["1","2","3","4"]))
     elif st["step"]=="passengers":
         if text not in ("1","2","3","4"):
             send(cid,STRINGS[st["lang"]][5])
         else:
             st.update(passengers=int(text),step="class")
-            send(cid,"🚘 Выберите класс автомобиля / Оберіть клас авто",keyboard(["Standard","Comfort","Universal"]))
+            send(cid,"🚘 Выберите класс автомобиля / Оберіть клас авто",step_keyboard(st["lang"],["Standard","Comfort","Universal"]))
     elif st["step"]=="class":
         if text not in ("Standard","Comfort","Universal"):
-            send(cid,"Выберите класс / Оберіть клас",keyboard(["Standard","Comfort","Universal"]))
+            send(cid,"Выберите класс / Оберіть клас",step_keyboard(st["lang"],["Standard","Comfort","Universal"]))
         else:
             st.update(car_class=text,step="payment")
-            send(cid,"💳 Способ оплаты / Спосіб оплати. Онлайн-оплата пока недоступна.",keyboard(["💵 Наличные / Готівка"]))
+            send(cid,"💳 Способ оплаты / Спосіб оплати. Онлайн-оплата пока недоступна.",step_keyboard(st["lang"],["💵 Наличные / Готівка"]))
     elif st["step"]=="payment":
         if text.casefold() not in ("💵 наличные / готівка","наличка","наличные","готівка","готівкою","cash","нал"):
-            send(cid,"Доступна только оплата наличными / Доступна лише готівка",keyboard(["💵 Наличные / Готівка"]))
+            send(cid,"Доступна только оплата наличными / Доступна лише готівка",step_keyboard(st["lang"],["💵 Наличные / Готівка"]))
         else:
             st.update(payment="cash",step="schedule")
             z=STRINGS[st["lang"]]
-            send(cid,z[6],keyboard([z[7],z[8],z[9]]))
+            send(cid,z[6],step_keyboard(st["lang"],[z[7],z[8],z[9]]))
     elif st["step"]=="schedule":
         z=STRINGS[st["lang"]]
         aliases={"сейчас":0,"зараз":0,"now":0,"через 15 мин":15,"через 15 хв":15,"через 30 мин":30,"через 30 хв":30}
@@ -292,16 +303,19 @@ def webhook():
                      f"💵 Оплата: наличные\\n🕒 Подача: {delay} мин\\n"
                      f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n"
                      f"Подтвердить заказ? / Підтвердити замовлення?")
-            send(cid,summary,keyboard(["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
+            send(cid,summary,step_keyboard(st["lang"],["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
     elif st["step"]=="confirm":
         if text in ("❌ Отмена / Скасувати","Отмена","Скасувати"):
             show_menu(cid,st)
         elif text!="✅ Подтвердить / Підтвердити":
-            send(cid,"Выберите подтверждение или отмену / Оберіть підтвердження або скасування",keyboard(["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
+            send(cid,"Выберите подтверждение или отмену / Оберіть підтвердження або скасування",step_keyboard(st["lang"],["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
+        elif st.get("submitting"):
+            send(cid,"Заказ уже обрабатывается / Замовлення вже обробляється")
         elif not DISPATCH:
             send(cid,"⚠️ Диспетчерская группа не настроена. Заказ не создан / Диспетчерська група не налаштована.")
             show_menu(cid,st)
         elif not DATABASE_URL:
+            st["submitting"]=True
             result,oid=dispatch_direct(uid,msg["from"].get("username"),st)
             if result.get("ok"):
                 send(cid,f"✅ Заказ #{oid} отправлен диспетчеру. Ожидайте подтверждения / Замовлення надіслано диспетчеру. Очікуйте підтвердження.")
@@ -309,6 +323,7 @@ def webhook():
                 send(cid,"❌ Не удалось отправить заказ диспетчеру. Заказ не принят / Не вдалося передати замовлення.")
             show_menu(cid,st)
         else:
+            st["submitting"]=True
             try:
                 oid,km,price=make_order(uid,msg["from"].get("username"),st)
                 result=dispatch_order(oid,st,km,price)
