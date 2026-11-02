@@ -29,9 +29,9 @@ STRINGS = {
 }
 
 MENU = {
- "uk": ["🚕 Замовити таксі","🛣 Міжмісто","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурити авто","🚕 Робота в таксі (оренда авто)","ℹ️ Як користуватися"],
- "ru": ["🚕 Заказать такси","🛣 Межгород","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурить авто","🚕 Работа в такси (аренда авто)","ℹ️ Как пользоваться"],
- "en": ["🚕 Order taxi","🛣 Intercity","📦 Delivery","👨‍✈️ Driver","🪝 Towing","🔋 Jump start","🚕 Taxi jobs (car rental)","ℹ️ How to use"]
+ "uk": ["🚕 Замовити таксі","🛣 Міжмісто","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурити авто","🚕 Робота в таксі (оренда авто)","ℹ️ Як користуватися","💰 Тарифи","👤 Профіль","📋 Мої поїздки","🆘 Підтримка"],
+ "ru": ["🚕 Заказать такси","🛣 Межгород","📦 Доставка","👨‍✈️ Драйвер","🪝 Буксировка","🔋 Прикурить авто","🚕 Работа в такси (аренда авто)","ℹ️ Как пользоваться","💰 Тарифы","👤 Профиль","📋 Мои поездки","🆘 Поддержка"],
+ "en": ["🚕 Order taxi","🛣 Intercity","📦 Delivery","👨‍✈️ Driver","🪝 Towing","🔋 Jump start","🚕 Taxi jobs (car rental)","ℹ️ How to use","💰 Fares","👤 Profile","📋 My trips","🆘 Support"]
 }
 BACK = {"uk":"⬅️ Головне меню","ru":"⬅️ Главное меню","en":"⬅️ Main menu"}
 UNAVAILABLE = {
@@ -41,7 +41,7 @@ UNAVAILABLE = {
 }
 def main_keyboard(lang):
     items=MENU.get(lang,MENU["uk"])
-    return {"keyboard":[[{"text":items[0]},{"text":items[1]}],[{"text":items[2]},{"text":items[3]}],[{"text":items[4]},{"text":items[5]}],[{"text":items[6]}],[{"text":items[7]}]],"resize_keyboard":True}
+    return {"keyboard":[[{"text":items[0]},{"text":items[1]}],[{"text":items[2]},{"text":items[3]}],[{"text":items[4]},{"text":items[5]}],[{"text":items[6]}],[{"text":items[7]},{"text":items[8]}],[{"text":items[9]},{"text":items[10]}],[{"text":items[11]}]],"resize_keyboard":True}
 def show_menu(cid,st):
     st["step"]="menu"
     lang=st.get("lang","uk")
@@ -194,6 +194,14 @@ def webhook():
             send(cid,STRINGS[lang][3],{"keyboard":[[{"text":"📍 Location","request_location":True}],[{"text":BACK[lang]}]],"resize_keyboard":True})
         elif text==options[7]:
             send(cid,{"uk":"Оберіть послугу в головному меню. Для замовлення таксі надішліть місце посадки, пункт призначення, кількість пасажирів і час подачі.","ru":"Выберите услугу в главном меню. Для заказа такси укажите место посадки, пункт назначения, число пассажиров и время подачи.","en":"Choose a service. For a taxi, send pickup and destination locations, passenger count and pickup time."}[lang],main_keyboard(lang))
+        elif text==options[8]:
+            send(cid,{"uk":"💰 День: 75 грн (1,5 км), далі 25 грн/км. Ніч 00:00–05:00: 300 грн + 90 грн/км. Очікування: 5 хв безкоштовно, потім 5/10 грн за хвилину. Ціна орієнтовна.","ru":"💰 День: 75 грн (1,5 км), далее 25 грн/км. Ночь 00:00–05:00: 300 грн + 90 грн/км. Ожидание: 5 минут бесплатно, затем 5/10 грн за минуту. Цена ориентировочная.","en":"💰 Day: 75 UAH (1.5 km), then 25 UAH/km. Night 00:00–05:00: 300 UAH + 90 UAH/km. First 5 waiting minutes free; then 5/10 UAH/min. Indicative fares."}[lang],main_keyboard(lang))
+        elif text==options[9]:
+            send(cid,{"uk":"👤 Профіль","ru":"👤 Профиль","en":"👤 Profile"}[lang]+"\\n"+(st.get("phone") or "—"),main_keyboard(lang))
+        elif text==options[10]:
+            send(cid,{"uk":"📋 Історія поїздок буде доступна після підключення бази.","ru":"📋 История поездок будет доступна после подключения базы.","en":"📋 Trip history will be available once the database is connected."}[lang],main_keyboard(lang))
+        elif text==options[11]:
+            send(cid,{"uk":"🆘 Звернення до підтримки поки не підключені.","ru":"🆘 Обращения в поддержку пока не подключены.","en":"🆘 Support requests are not yet connected."}[lang],main_keyboard(lang))
         elif text in options:
             st["step"]="section"
             send(cid,options[options.index(text)]+"\n\n"+UNAVAILABLE[lang],keyboard([BACK[lang]]))
