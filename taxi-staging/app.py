@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import urllib.request
 import urllib.error
+import urllib.parse
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -85,8 +86,38 @@ def distance(a,b):
     x1,x2=math.radians(a["latitude"]),math.radians(b["latitude"])
     dx=x2-x1;dy=math.radians(b["longitude"]-a["longitude"])
     return 12742*math.asin(min(1,math.sqrt(math.sin(dx/2)**2+math.cos(x1)*math.cos(x2)*math.sin(dy/2)**2)))
+GOOGLE_MAPS_API_KEY=os.getenv("GOOGLE_MAPS_API_KEY","")
+def route_point(p):
+    if p.get("address"):
+        address=p["address"]
+        if not any(x in address.casefold() for x in ("николаев","миколаїв","mykolaiv","украина","україна","ukraine")):
+            address+=", Миколаїв, Україна"
+        return address
+    return f"{p['latitude']},{p['longitude']}"
+def route_estimate(st):
+    """Google Directions driving distance in km, or None if unavailable."""
+    if not GOOGLE_MAPS_API_KEY:
+        return None
+    query=urllib.parse.urlencode({"origin":route_point(st["origin"]),"destination":route_point(st["destination"]),"mode":"driving","language":"ru","region":"ua","key":GOOGLE_MAPS_API_KEY})
+    try:
+        with urllib.request.urlopen("https://maps.googleapis.com/maps/api/directions/json?"+query,timeout=8) as resp:
+            data=json.load(resp)
+        if data.get("status")!="OK" or not data.get("routes"):
+            app.logger.warning("Google Directions unavailable: %s",data.get("status"))
+            return None
+        legs=data["routes"][0]["legs"]
+        km=sum(leg["distance"]["value"] for leg in legs)/1000
+        return round(km,2) if km>0 else None
+    except Exception:
+        app.logger.exception("Google driving route calculation failed")
+        return None
+def fare_estimate(km,delay=0):
+    if km is None: return None
+    hour=(datetime.now(TZ)+timedelta(minutes=delay)).hour
+    if 0<=hour<5: return round(300+90*km)
+    return round(75+25*max(0,km-1.5))
 def make_order(uid,username,st):
-    km=distance(st["origin"],st["destination"])
+    km=st.get("route_km") or distance(st["origin"],st["destination"])
     now=datetime.now(TZ)
     night=(now+timedelta(minutes=st.get("delay",0))).hour<5
     with connect() as conn:
@@ -96,7 +127,7 @@ def make_order(uid,username,st):
             price=(float(t["night_base"])+float(t["night_per_km"])*km if night else float(t["day_base"])+float(t["day_per_km"])*max(0,km-float(t["day_included_km"])))
             oid=secrets.token_hex(6)
             q.execute("""INSERT INTO nikcar_taxi.orders(id,type,status,client_id,client_username,client_phone,scheduled_at,base_price,km,passengers,origin,destination,meta)
-            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"straight_line","night":night,"car_class":st.get("car_class","Standard"),"payment":st.get("payment","Наличные")})))
+            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"google_driving_route" if st.get("route_km") else "straight_line","night":night,"car_class":st.get("car_class","Standard"),"payment":st.get("payment","Наличные")})))
             q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
@@ -105,25 +136,26 @@ def location_label(p):
     return f"https://maps.google.com/?q={p['latitude']},{p['longitude']}"
 
 def dispatch_direct(uid,username,st):
-    """Fallback dispatch without database. Telegram message is the durable record."""
-    if not DISPATCH: return {"ok":False,"description":"DISPATCH_CHAT_ID missing"}
-    a,b=st["origin"],st["destination"]
-    has_coords=all("latitude" in p and "longitude" in p for p in (a,b))
-    km=distance(a,b) if has_coords else None
+    """Deliver order directly to Telegram dispatch without database."""
+    if not DISPATCH: return {"ok":False,"description":"DISPATCH_CHAT_ID missing"},None
     oid="T"+secrets.token_hex(4).upper()
-    delay=st.get("delay",0)
-    text=(f"🚕 NikCar — НОВЫЙ ЗАКАЗ #{oid}\\n"
-          f"Клиент Telegram: {uid} (@{username or '-'})\\n"
-          f"Телефон: {st.get('phone','—')}\\n"
-          f"Пассажиры: {st.get('passengers',1)}\\n"
-          f"Класс: {st.get('car_class','Standard')}\\n"
-          f"Оплата: {'карта (согласовать с диспетчером)' if st.get('payment')=='card' else 'наличные'}\\n"
-          f"Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}\\n"
-          f"По прямой: {km:.1f} км (не дорожное расстояние)\\n" if km is not None else "Расстояние уточнит диспетчер\\n"
-          f"📍 Посадка: {location_label(a)}\\n"
-          f"🏁 Назначение: {location_label(b)}\\n"
-          f"⚠️ Резервный режим: заказ в Telegram, без записи в БД. Диспетчер подтверждает вручную.")
-    result=api("sendMessage",{"chat_id":int(DISPATCH),"text":text,"disable_web_page_preview":True})
+    km=st.get("route_km")
+    price=st.get("route_price")
+    details=[
+        f"🚕 NikCar — НОВЫЙ ЗАКАЗ #{oid}",
+        f"Клиент Telegram: {uid} (@{username or '-'})",
+        f"Телефон: {st.get('phone','—')}",
+        f"Пассажиры: {st.get('passengers',1)}",
+        f"Класс: {st.get('car_class','Standard')}",
+        f"Оплата: {'карта (согласовать с диспетчером)' if st.get('payment')=='card' else 'наличные'}",
+        f"Подача: {'сейчас' if not st.get('delay') else 'через '+str(st['delay'])+' мин'}",
+        f"📍 Посадка: {location_label(st['origin'])}",
+        f"🏁 Назначение: {location_label(st['destination'])}",
+        f"🚗 Маршрут Google Maps: {km:.1f} км" if km is not None else "🚗 Расстояние: уточняет диспетчер",
+        f"💰 Ориентировочно: {price} грн" if price is not None else "💰 Стоимость: уточняет диспетчер",
+        "⚠️ Заказ без записи в БД. Диспетчер подтверждает вручную."
+    ]
+    result=api("sendMessage",{"chat_id":int(DISPATCH),"text":"\\n".join(details),"disable_web_page_preview":True})
     if not result.get("ok"):
         app.logger.error("Dispatch delivery failed: %s",result.get("description","unknown Telegram error"))
     return result,oid
@@ -338,15 +370,23 @@ def webhook():
             send(cid,z[6],keyboard([z[7],z[8],z[9]]))
         else:
             st.update(delay=delay,step="confirm")
-            km=distance(st["origin"],st["destination"]) if all("latitude" in p for p in (st["origin"],st["destination"])) else None
+            km=route_estimate(st)
+            st["route_km"]=km
+            st["route_price"]=fare_estimate(km,delay)
             a,b=st["origin"],st["destination"]
-            summary=(f"🚕 NikCar Taxi — проверка заказа / Перевірка замовлення\\n"
-                     f"📍 Откуда: {location_label(a)}\\n"
-                     f"🏁 Куда: {location_label(b)}\\n"
-                     f"👥 Пассажиров: {st['passengers']}\\n🚘 Класс: {st.get('car_class','Standard')}\\n"
-                     f"💳 Оплата: {'карта (уточнить у диспетчера)' if st.get('payment')=='card' else 'наличные'}\\n🕒 Подача: {delay} мин\\n"
-                     f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n" if km is not None else "📏 Расстояние уточнит диспетчер\\n"
-                     f"Подтвердить заказ? / Підтвердити замовлення?")
+            lines=[
+                "🚕 NikCar Taxi — подтверждение заказа",
+                f"📍 Откуда: {location_label(a)}",
+                f"🏁 Куда: {location_label(b)}",
+                f"👥 Пассажиров: {st['passengers']}",
+                f"🚘 Класс: {st.get('car_class','Standard')}",
+                f"💳 Оплата: {'карта' if st.get('payment')=='card' else 'наличные'}",
+                f"🕒 Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}",
+                f"🚗 Маршрут Google Maps: {km:.1f} км" if km is not None else "🚗 Расстояние: пока не рассчитано",
+                f"💰 Ориентировочная стоимость: {st['route_price']} грн" if st["route_price"] is not None else "💰 Стоимость уточнит диспетчер",
+                "Подтвердить заказ? / Підтвердити замовлення?"
+            ]
+            summary="\\n".join(lines)
             send(cid,summary,step_keyboard(st["lang"],["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
     elif st["step"]=="confirm":
         if text in ("❌ Отмена / Скасувати","Отмена","Скасувати"):
