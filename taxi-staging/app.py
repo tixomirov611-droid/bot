@@ -76,6 +76,29 @@ def make_order(uid,username,st):
             q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
+def dispatch_direct(uid,username,st):
+    """Fallback dispatch without database. Telegram message is the durable record."""
+    if not DISPATCH: return {"ok":False,"description":"DISPATCH_CHAT_ID missing"}
+    a,b=st["origin"],st["destination"]
+    km=distance(a,b)
+    oid="T"+secrets.token_hex(4).upper()
+    delay=st.get("delay",0)
+    text=(f"🚕 NikCar — НОВЫЙ ЗАКАЗ #{oid}\\n"
+          f"Клиент Telegram: {uid} (@{username or '-'})\\n"
+          f"Телефон: {st.get('phone','—')}\\n"
+          f"Пассажиры: {st.get('passengers',1)}\\n"
+          f"Класс: {st.get('car_class','Standard')}\\n"
+          f"Оплата: наличные\\n"
+          f"Подача: {'сейчас' if delay==0 else 'через '+str(delay)+' мин'}\\n"
+          f"По прямой: {km:.1f} км (не дорожное расстояние)\\n"
+          f"📍 Посадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\n"
+          f"🏁 Назначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}\\n"
+          f"⚠️ Резервный режим: заказ в Telegram, без записи в БД. Диспетчер подтверждает вручную.")
+    result=api("sendMessage",{"chat_id":int(DISPATCH),"text":text,"disable_web_page_preview":True})
+    if not result.get("ok"):
+        app.logger.error("Dispatch delivery failed: %s",result.get("description","unknown Telegram error"))
+    return result,oid
+
 def dispatch_order(oid,st,km,price):
     a,b=st["origin"],st["destination"]
     payload={"chat_id":int(DISPATCH),"text":f"🚕 NikCar #{oid}\\nТелефон: {st['phone']}\\nПассажиров: {st['passengers']}\\nКласс: {st.get('car_class','Standard')}\\nОплата: {st.get('payment','Наличные')}\\nРасстояние по прямой: {km:.1f} км\\nОриентир: {price:.0f} грн\\nПосадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\nНазначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}","reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
@@ -275,8 +298,15 @@ def webhook():
             show_menu(cid,st)
         elif text!="✅ Подтвердить / Підтвердити":
             send(cid,"Выберите подтверждение или отмену / Оберіть підтвердження або скасування",keyboard(["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
-        elif not DATABASE_URL or not DISPATCH:
-            send(cid,"⚠️ Заказ НЕ создан: диспетчерская база пока не подключена. / Замовлення НЕ створено: база диспетчерської поки не підключена.")
+        elif not DISPATCH:
+            send(cid,"⚠️ Диспетчерская группа не настроена. Заказ не создан / Диспетчерська група не налаштована.")
+            show_menu(cid,st)
+        elif not DATABASE_URL:
+            result,oid=dispatch_direct(uid,msg["from"].get("username"),st)
+            if result.get("ok"):
+                send(cid,f"✅ Заказ #{oid} отправлен диспетчеру. Ожидайте подтверждения / Замовлення надіслано диспетчеру. Очікуйте підтвердження.")
+            else:
+                send(cid,"❌ Не удалось отправить заказ диспетчеру. Заказ не принят / Не вдалося передати замовлення.")
             show_menu(cid,st)
         else:
             try:
