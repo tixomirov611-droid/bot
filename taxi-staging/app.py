@@ -237,7 +237,8 @@ def webhook():
     if text=="/start":
         reg=load_registration(uid)
         if reg or st.get("phone"):
-            st.clear();st.update(step="menu",lang=(reg or st)["lang"],phone=(reg or st)["phone"])
+            saved=reg or {"lang":st["lang"],"phone":st["phone"]}
+            st.clear();st.update(step="menu",**saved)
             show_menu(cid,st)
         else:
             st.clear();st.update(step="lang",lang="uk")
