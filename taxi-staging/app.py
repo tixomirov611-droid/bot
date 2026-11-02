@@ -151,34 +151,48 @@ def location_label(p):
     if p.get("address"): return p["address"]
     return f"https://maps.google.com/?q={p['latitude']},{p['longitude']}"
 
+def dispatch_message(oid,st,km=None,price=None):
+    now=datetime.now(TZ)
+    delay=st.get("delay",0)
+    pickup=now+timedelta(minutes=delay)
+    hour=pickup.hour
+    tariff="ТАКСИ НОЧЬ" if 0<=hour<5 else "ТАКСИ ДЕНЬ"
+    payment="КАРТА (согласовать)" if st.get("payment")=="card" else "НАЛИЧНЫЕ"
+    lines=[
+        f"🚕 Заказ {oid}    ⏱ {now:%H:%M}",
+        "🧾 Тип: taxi",
+        f"🕒 Подача: {pickup:%d.%m %H:%M}",
+        f"👥 Пассажиры: {st.get('passengers',1)}",
+        f"📏 Дистанция: {km:.1f} км" if km is not None else "📏 Дистанция: уточняется",
+        f"💰 Ориентировочная цена: {price:.0f} грн" if price is not None else "💰 Цена: уточняется",
+        f"📌 Тариф: {tariff}",
+        f"🚘 Класс: {st.get('car_class','Standard')}",
+        f"💳 Оплата: {payment}",
+        f"📱 Телефон: {st.get('phone','—')}",
+        "",
+        f"📍 Откуда: {location_label(st['origin'])}",
+        f"🏁 Куда: {location_label(st['destination'])}"
+    ]
+    origin=geocode_point(st["origin"])
+    destination=geocode_point(st["destination"])
+    if origin:
+        lines.append(f"📍 Точка подачи (карта): https://www.openstreetmap.org/?mlat={origin[0]}&mlon={origin[1]}#map=16/{origin[0]}/{origin[1]}")
+    if origin and destination:
+        lines.append(f"🧭 Маршрут (карта): https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route={origin[0]},{origin[1]};{destination[0]},{destination[1]}")
+    return "\n".join(lines)
+
 def dispatch_direct(uid,username,st):
-    """Deliver order directly to Telegram dispatch without database."""
     if not DISPATCH: return {"ok":False,"description":"DISPATCH_CHAT_ID missing"},None
     oid="T"+secrets.token_hex(4).upper()
-    km=st.get("route_km")
-    price=st.get("route_price")
-    details=[
-        f"🚕 NikCar — НОВЫЙ ЗАКАЗ #{oid}",
-        f"Клиент Telegram: {uid} (@{username or '-'})",
-        f"Телефон: {st.get('phone','—')}",
-        f"Пассажиры: {st.get('passengers',1)}",
-        f"Класс: {st.get('car_class','Standard')}",
-        f"Оплата: {'карта (согласовать с диспетчером)' if st.get('payment')=='card' else 'наличные'}",
-        f"Подача: {'сейчас' if not st.get('delay') else 'через '+str(st['delay'])+' мин'}",
-        f"📍 Посадка: {location_label(st['origin'])}",
-        f"🏁 Назначение: {location_label(st['destination'])}",
-        f"🚗 Маршрут по дорогам: {km:.1f} км" if km is not None else "🚗 Расстояние: уточняет диспетчер",
-        f"💰 Ориентировочно: {price} грн" if price is not None else "💰 Стоимость: уточняет диспетчер",
-        "⚠️ Заказ без записи в БД. Диспетчер подтверждает вручную."
-    ]
-    result=api("sendMessage",{"chat_id":int(DISPATCH),"text":"\\n".join(details),"disable_web_page_preview":True})
+    message=dispatch_message(oid,st,st.get("route_km"),st.get("route_price"))
+    result=api("sendMessage",{"chat_id":int(DISPATCH),"text":message,"disable_web_page_preview":True})
     if not result.get("ok"):
         app.logger.error("Dispatch delivery failed: %s",result.get("description","unknown Telegram error"))
     return result,oid
 
+
 def dispatch_order(oid,st,km,price):
-    a,b=st["origin"],st["destination"]
-    payload={"chat_id":int(DISPATCH),"text":f"🚕 NikCar #{oid}\\nТелефон: {st['phone']}\\nПассажиров: {st['passengers']}\\nКласс: {st.get('car_class','Standard')}\\nОплата: {st.get('payment','Наличные')}\\nРасстояние по прямой: {km:.1f} км\\nОриентир: {price:.0f} грн\\nПосадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\nНазначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}","reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
+    payload={"chat_id":int(DISPATCH),"text":dispatch_message(oid,st,st.get("route_km") or km,st.get("route_price") or price),"disable_web_page_preview":True,"reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
     result=api("sendMessage",payload)
     if result.get("ok"):
         with connect() as conn:
