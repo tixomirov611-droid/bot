@@ -72,13 +72,13 @@ def make_order(uid,username,st):
             price=(float(t["night_base"])+float(t["night_per_km"])*km if night else float(t["day_base"])+float(t["day_per_km"])*max(0,km-float(t["day_included_km"])))
             oid=secrets.token_hex(6)
             q.execute("""INSERT INTO nikcar_taxi.orders(id,type,status,client_id,client_username,client_phone,scheduled_at,base_price,km,passengers,origin,destination,meta)
-            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"straight_line","night":night})))
+            VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"straight_line","night":night,"car_class":st.get("car_class","Standard"),"payment":st.get("payment","Наличные")})))
             q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
 def dispatch_order(oid,st,km,price):
     a,b=st["origin"],st["destination"]
-    payload={"chat_id":int(DISPATCH),"text":f"🚕 NikCar #{oid}\\nТелефон: {st['phone']}\\nПассажиров: {st['passengers']}\\nРасстояние по прямой: {km:.1f} км\\nОриентир: {price:.0f} грн\\nПосадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\nНазначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}","reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
+    payload={"chat_id":int(DISPATCH),"text":f"🚕 NikCar #{oid}\\nТелефон: {st['phone']}\\nПассажиров: {st['passengers']}\\nКласс: {st.get('car_class','Standard')}\\nОплата: {st.get('payment','Наличные')}\\nРасстояние по прямой: {km:.1f} км\\nОриентир: {price:.0f} грн\\nПосадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\nНазначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}","reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
     result=api("sendMessage",payload)
     if result.get("ok"):
         with connect() as conn:
@@ -199,7 +199,19 @@ def webhook():
         elif text==options[9]:
             send(cid,{"uk":"👤 Профіль","ru":"👤 Профиль","en":"👤 Profile"}[lang]+"\\n"+(st.get("phone") or "—"),main_keyboard(lang))
         elif text==options[10]:
-            send(cid,{"uk":"📋 Історія поїздок буде доступна після підключення бази.","ru":"📋 История поездок будет доступна после подключения базы.","en":"📋 Trip history will be available once the database is connected."}[lang],main_keyboard(lang))
+            if not DATABASE_URL:
+                send(cid,{"uk":"📋 Історія поїздок буде доступна після підключення бази.","ru":"📋 История поездок будет доступна после подключения базы.","en":"📋 Trip history will be available once the database is connected."}[lang],main_keyboard(lang))
+            else:
+                try:
+                    with connect() as conn:
+                        with conn.cursor() as q:
+                            q.execute("SELECT id,status,base_price,created_at FROM nikcar_taxi.orders WHERE client_id=%s ORDER BY created_at DESC LIMIT 5",(uid,))
+                            orders=q.fetchall()
+                    lines=[f"#{oid} — {status} — {price} грн — {created:%d.%m %H:%M}" for oid,status,price,created in orders]
+                    send(cid,"📋 "+("\\n".join(lines) if lines else "Заказов пока нет / Замовлень поки немає"),main_keyboard(lang))
+                except Exception:
+                    app.logger.exception("Trip history failed")
+                    send(cid,"История временно недоступна / Історія тимчасово недоступна",main_keyboard(lang))
         elif text==options[11]:
             send(cid,{"uk":"🆘 Звернення до підтримки поки не підключені.","ru":"🆘 Обращения в поддержку пока не подключены.","en":"🆘 Support requests are not yet connected."}[lang],main_keyboard(lang))
         elif text in options:
@@ -222,9 +234,21 @@ def webhook():
         if text not in ("1","2","3","4"):
             send(cid,STRINGS[st["lang"]][5])
         else:
-            st.update(passengers=int(text),step="schedule")
-            s=STRINGS[st["lang"]]
-            send(cid,s[6],keyboard([s[7],s[8],s[9]]))
+            st.update(passengers=int(text),step="class")
+            send(cid,"🚘 Выберите класс автомобиля / Оберіть клас авто",keyboard(["Standard","Comfort","Universal"]))
+    elif st["step"]=="class":
+        if text not in ("Standard","Comfort","Universal"):
+            send(cid,"Выберите класс / Оберіть клас",keyboard(["Standard","Comfort","Universal"]))
+        else:
+            st.update(car_class=text,step="payment")
+            send(cid,"💳 Способ оплаты / Спосіб оплати. Онлайн-оплата пока недоступна.",keyboard(["💵 Наличные / Готівка"]))
+    elif st["step"]=="payment":
+        if text!="💵 Наличные / Готівка":
+            send(cid,"Доступна только оплата наличными / Доступна лише готівка",keyboard(["💵 Наличные / Готівка"]))
+        else:
+            st.update(payment="cash",step="schedule")
+            z=STRINGS[st["lang"]]
+            send(cid,z[6],keyboard([z[7],z[8],z[9]]))
     elif st["step"]=="schedule":
         s=STRINGS[st["lang"]]
         if text not in (s[7],s[8],s[9]):
