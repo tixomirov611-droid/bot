@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-label="Ілюстрація автомобіля NikCar на зеленому тлі">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#09594F"/><stop offset=".56" stop-color="#0B786B"/><stop offset="1" stop-color="#15A18E"/></linearGradient>
+<linearGradient id="paint" x1=".1" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset=".6" stop-color="#E6F5F3"/><stop offset="1" stop-color="#A8D4CD"/></linearGradient>
+<linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#112F3E"/><stop offset="1" stop-color="#477C84"/></linearGradient>
+<linearGradient id="road" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#114F4C" stop-opacity=".05"/><stop offset="1" stop-color="#053833" stop-opacity=".8"/></linearGradient>
+<filter id="sh"><feGaussianBlur stdDeviation="19"/></filter>
+</defs>
+<rect width="1200" height="850" rx="45" fill="url(#bg)"/>
+<path d="M0 710 1200 530v320H0z" fill="url(#road)"/>
+<g opacity=".10" fill="none" stroke="#D6FFF6" stroke-width="2"><path d="M-50 180 1240 65M-50 330 1240 215M-50 480 1240 365M-50 630 1240 515"/><path d="M145-60 55 900M395-60 305 900M645-60 555 900M895-60 805 900M1145-60 1055 900"/></g>
+<circle cx="920" cy="190" r="230" fill="#5FD8BD" opacity=".12"/>
+<circle cx="940" cy="180" r="155" fill="#B7F6DF" opacity=".08"/>
+<g opacity=".32"><rect x="95" y="260" width="230" height="10" rx="5" fill="#6DD6C5"/><rect x="95" y="280" width="160" height="6" rx="3" fill="#6DD6C5"/></g>
+<ellipse cx="609" cy="689" rx="410" ry="65" fill="#052A29" opacity=".55" filter="url(#sh)"/>
+<!-- stylized rounded city fleet car, three-quarter perspective -->
+<path d="M221 576 252 464c10-34 39-59 78-66l380-48c46-6 86 10 121 48l115 113 51 16c36 12 50 36 50 69v48c0 23-19 42-42 42H259c-27 0-48-19-48-44v-34z" fill="url(#paint)" stroke="#C6E5DF" stroke-width="7"/>
+<path d="M330 398 710 350c43-5 82 10 118 49l106 111-662 2 23-72c8-21 17-35 35-42z" fill="#F7FDFC" opacity=".8"/>
+<path d="M331 418 707 369c38-5 65 7 96 39l91 93-597 1 19-58c4-13 8-21 15-26z" fill="url(#glass)"/>
+<path d="m692 373-22 128M809 408l3 94" stroke="#D2F4EC" stroke-width="9" opacity=".85"/>
+<path d="M926 512 1025 540v36H926z" fill="#DBF0EC"/><path d="M257 512h76l-22 62-95 6z" fill="#EEF8F6"/>
+<path d="M321 555h585" stroke="#9FCAC3" stroke-width="6" opacity=".7"/>
+<path d="M323 607h640" stroke="#0E776B" stroke-width="9" opacity=".33"/>
+<path d="M914 570h97l7 40h-105z" fill="#F4C66C"/><path d="M234 552h76l-16 45h-71z" fill="#F4C66C"/>
+<g><circle cx="382" cy="654" r="99" fill="#1C343D"/><circle cx="382" cy="654" r="64" fill="#CFE9E5"/><circle cx="382" cy="654" r="37" fill="#6A9B9C"/><circle cx="382" cy="654" r="14" fill="#DFF5EF"/></g>
+<g><circle cx="869" cy="654" r="99" fill="#1C343D"/><circle cx="869" cy="654" r="64" fill="#CFE9E5"/><circle cx="869" cy="654" r="37" fill="#6A9B9C"/><circle cx="869" cy="654" r="14" fill="#DFF5EF"/></g>
+<path d="M518 556h86" stroke="#B1D1C9" stroke-width="11" stroke-linecap="round"/>
+<path d="M969 685h85M143 685h90" stroke="#DAF9E6" stroke-width="5" opacity=".25" stroke-linecap="round"/>
+<rect x="77" y="70" width="205" height="48" rx="24" fill="#FFFFFF" opacity=".14"/>
+<circle cx="108" cy="94" r="9" fill="#F4C66C"/>
+<text x="129" y="101" fill="#E3FFF8" font-family="Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="2">NIKCAR FLEET</text>
+</svg>
