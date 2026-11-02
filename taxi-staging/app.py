@@ -50,7 +50,7 @@ def make_order(uid,username,st):
             oid=secrets.token_hex(6)
             q.execute("""INSERT INTO nikcar_taxi.orders(id,type,status,client_id,client_username,client_phone,scheduled_at,base_price,km,passengers,origin,destination,meta)
             VALUES(%s,'taxi','new',%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb)""",(oid,uid,username,st["phone"],now+timedelta(minutes=st.get("delay",0)),round(price,2),round(km,2),st["passengers"],json.dumps(st["origin"]),json.dumps(st["destination"]),json.dumps({"estimate":"straight_line","night":night})))
-            q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"],st["phone"]))
+            q.execute("INSERT INTO nikcar_taxi.users(user_id,username,lang,phone) VALUES(%s,%s,%s,%s) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone,updated_at=now()",(uid,username,st["lang"].upper(),st["phone"]))
         conn.commit()
     return oid,km,price
 def dispatch_order(oid,st,km,price):
