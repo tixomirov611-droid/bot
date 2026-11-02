@@ -136,6 +136,7 @@ def webhook():
     if not cid: return jsonify(ok=True)
     text=(msg.get("text") or "").strip()
     uid=(msg.get("from") or {}).get("id")
+    if not uid or (msg.get("chat") or {}).get("type")!="private": return jsonify(ok=True)
     st=states.setdefault(uid,{"step":"lang","lang":"uk"})
     if text=="/start":
         st.clear();st.update(step="lang",lang="uk")
