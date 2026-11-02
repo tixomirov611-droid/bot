@@ -41,7 +41,7 @@ def distance(a,b):
 def make_order(uid,username,st):
     km=distance(st["origin"],st["destination"])
     now=datetime.now(TZ)
-    night=now.hour<5
+    night=(now+timedelta(minutes=st.get("delay",0))).hour<5
     with connect() as conn:
         with conn.cursor() as q:
             q.execute("SELECT key,value FROM nikcar_taxi.settings WHERE key=ANY(%s)",(["night_base","night_per_km","day_base","day_per_km","day_included_km"],))
@@ -56,7 +56,13 @@ def make_order(uid,username,st):
 def dispatch_order(oid,st,km,price):
     a,b=st["origin"],st["destination"]
     payload={"chat_id":int(DISPATCH),"text":f"🚕 NikCar #{oid}\\nТелефон: {st['phone']}\\nПассажиров: {st['passengers']}\\nРасстояние по прямой: {km:.1f} км\\nОриентир: {price:.0f} грн\\nПосадка: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\nНазначение: https://maps.google.com/?q={b['latitude']},{b['longitude']}","reply_markup":{"inline_keyboard":[[{"text":"🚕 Принять","callback_data":"accept:"+oid}]]}}
-    return api("sendMessage",payload)
+    result=api("sendMessage",payload)
+    if result.get("ok"):
+        with connect() as conn:
+            with conn.cursor() as q:
+                q.execute("UPDATE nikcar_taxi.orders SET dispatch_message_id=%s WHERE id=%s",(result["result"]["message_id"],oid))
+            conn.commit()
+    return result
 def driver_callback(c):
     data=c.get("data","");uid=c["from"]["id"];cid=c["message"]["chat"]["id"]
     if cid!=int(DISPATCH or "0") or ":" not in data: return "Недоступно"
