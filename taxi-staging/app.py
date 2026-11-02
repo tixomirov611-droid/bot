@@ -166,6 +166,9 @@ def webhook():
     uid=(msg.get("from") or {}).get("id")
     if not uid or (msg.get("chat") or {}).get("type")!="private": return jsonify(ok=True)
     st=states.setdefault(uid,{"step":"lang","lang":"uk"})
+    if text in ("/menu","/cancel","❌ Отмена / Скасувати") and st.get("step") not in ("lang","phone"):
+        show_menu(cid,st)
+        return jsonify(ok=True)
     if text=="/start":
         st.clear();st.update(step="lang",lang="uk")
         send(cid,"Вас вітає NikCar Taxi / Welcome to NikCar Taxi. Оберіть мову / Choose language",keyboard(list(LANGS)))
@@ -223,7 +226,7 @@ def webhook():
         show_menu(cid,st)
     elif st["step"] in ("origin","destination"):
         if not msg.get("location"):
-            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4])
+            send(cid,STRINGS[st["lang"]][3 if st["step"]=="origin" else 4],keyboard([BACK[st["lang"]]]))
         elif st["step"]=="origin":
             st.update(origin=msg["location"],step="destination")
             send(cid,STRINGS[st["lang"]][4])
@@ -243,33 +246,51 @@ def webhook():
             st.update(car_class=text,step="payment")
             send(cid,"💳 Способ оплаты / Спосіб оплати. Онлайн-оплата пока недоступна.",keyboard(["💵 Наличные / Готівка"]))
     elif st["step"]=="payment":
-        if text!="💵 Наличные / Готівка":
+        if text.casefold() not in ("💵 наличные / готівка","наличка","наличные","готівка","готівкою","cash","нал"):
             send(cid,"Доступна только оплата наличными / Доступна лише готівка",keyboard(["💵 Наличные / Готівка"]))
         else:
             st.update(payment="cash",step="schedule")
             z=STRINGS[st["lang"]]
             send(cid,z[6],keyboard([z[7],z[8],z[9]]))
     elif st["step"]=="schedule":
-        s=STRINGS[st["lang"]]
-        if text not in (s[7],s[8],s[9]):
-            send(cid,s[6])
+        z=STRINGS[st["lang"]]
+        aliases={"сейчас":0,"зараз":0,"now":0,"через 15 мин":15,"через 15 хв":15,"через 30 мин":30,"через 30 хв":30}
+        delay={z[7]:0,z[8]:15,z[9]:30}.get(text,aliases.get(text.casefold()))
+        if delay is None:
+            send(cid,z[6],keyboard([z[7],z[8],z[9]]))
         else:
-            # No dispatch or DB persistence yet; do not falsely confirm a real booking.
-            st["delay"]=0 if text==s[7] else 15 if text==s[8] else 30
-            if not DATABASE_URL or not DISPATCH:
-                send(cid,"Оформление заказов временно недоступно: сервер подключается к диспетчерской. Попробуйте позже.")
-                return jsonify(ok=True)
+            st.update(delay=delay,step="confirm")
+            km=distance(st["origin"],st["destination"])
+            a,b=st["origin"],st["destination"]
+            summary=(f"🚕 NikCar Taxi — проверка заказа / Перевірка замовлення\\n"
+                     f"📍 Откуда: https://maps.google.com/?q={a['latitude']},{a['longitude']}\\n"
+                     f"🏁 Куда: https://maps.google.com/?q={b['latitude']},{b['longitude']}\\n"
+                     f"👥 Пассажиров: {st['passengers']}\\n🚘 Класс: {st.get('car_class','Standard')}\\n"
+                     f"💵 Оплата: наличные\\n🕒 Подача: {delay} мин\\n"
+                     f"📏 По прямой: {km:.1f} км (не дорожный маршрут)\\n"
+                     f"Подтвердить заказ? / Підтвердити замовлення?")
+            send(cid,summary,keyboard(["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
+    elif st["step"]=="confirm":
+        if text in ("❌ Отмена / Скасувати","Отмена","Скасувати"):
+            show_menu(cid,st)
+        elif text!="✅ Подтвердить / Підтвердити":
+            send(cid,"Выберите подтверждение или отмену / Оберіть підтвердження або скасування",keyboard(["✅ Подтвердить / Підтвердити","❌ Отмена / Скасувати"]))
+        elif not DATABASE_URL or not DISPATCH:
+            send(cid,"⚠️ Заказ НЕ создан: диспетчерская база пока не подключена. / Замовлення НЕ створено: база диспетчерської поки не підключена.")
+            show_menu(cid,st)
+        else:
             try:
                 oid,km,price=make_order(uid,msg["from"].get("username"),st)
                 result=dispatch_order(oid,st,km,price)
                 if not result.get("ok"):
-                    send(cid,"Заказ сохранён, но отправка диспетчеру не удалась. Позвоните диспетчеру.")
+                    send(cid,f"⚠️ Заказ #{oid} сохранён, но диспетчер не получил уведомление. Повторно не оформляйте заказ.")
                 else:
-                    send(cid,f"Заказ #{oid} передан диспетчеру. Ориентир: {price:.0f} грн (расстояние по прямой).",keyboard([s[2]]))
+                    send(cid,f"✅ Заказ #{oid} передан диспетчеру. Ориентир: {price:.0f} грн (по прямой).")
                 show_menu(cid,st)
             except Exception:
                 app.logger.exception("Order failed")
-                send(cid,"Не удалось оформить заказ. Повторите позже.")
+                send(cid,"Не удалось оформить заказ / Не вдалося оформити замовлення")
+                show_menu(cid,st)
     return jsonify(ok=True)
 
 
