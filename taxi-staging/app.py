@@ -477,4 +477,5 @@ def _register_webhook():
             app.logger.exception("Telegram webhook registration failed")
         time.sleep(5 * (attempt + 1))
 
-threading.Thread(target=_register_webhook, daemon=True).start()
+if os.getenv("ENABLE_TELEGRAM_WEBHOOK", "0") == "1":
+    threading.Thread(target=_register_webhook, daemon=True).start()
