@@ -464,3 +464,24 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
  assert.match(html,/style\.css\?v=0\.14\.2/);
 });
+
+test('owner sees rental handover and return controls, drivers cannot perform them', () => {
+ const h=harness();
+ h.app.setUser({id:'owner-user',email:'owner@example.com'});h.app.setMe(owner);
+ const r={id:'rental-1',car_id:'car-1',driver_id:'driver-1',status:'approved',created_at:'2026-11-08T12:00:00Z',handed_over_at:null,returned_at:null};
+ h.app.setRecords({...h.app.emptyRecords(),rental_requests:[r]});
+ assert.match(h.app.requestsPage(),/data-action="handover-rental"/);
+ h.app.setRecords({...h.app.emptyRecords(),rental_requests:[{...r,handed_over_at:'2026-11-08T13:00:00Z',odometer_out_km:10000,fuel_full_out:true}]});
+ assert.match(h.app.requestsPage(),/data-action="return-rental"/);
+ h.app.setMe({...owner,role:'driver',id:'driver-1'});
+ assert.doesNotMatch(h.app.requestsPage(),/data-action="handover-rental"|data-action="return-rental"/);
+});
+test('rental lifecycle SQL guards owner role, full tank, mileage and atomic car transitions', () => {
+ const sql=fs.readFileSync(path.join(__dirname,'..','sql','20261108_rental_lifecycle_v1.sql'),'utf8');
+ assert.match(sql,/private\.is_owner\(\)/);
+ assert.match(sql,/p_full_tank is distinct from true/);
+ assert.match(sql,/p_odometer<r\.odometer_out_km/);
+ assert.match(sql,/status='rented' where id=r\.car_id and status='reserved'/);
+ assert.match(sql,/status='free' where id=r\.car_id and status='rented'/);
+ assert.match(sql,/revoke all on function public\.nikcar_return_rental/);
+});
