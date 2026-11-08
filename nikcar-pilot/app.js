@@ -79,7 +79,7 @@ const t=k=>ADDITIONS[lang]?.[k]||UICONSOLE[lang]?.[k]||TRANSLATIONS[lang][k]||k;
 const e=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const d=x=>x?new Date(x).toLocaleString(lang==='uk'?'uk-UA':'en-GB',{dateStyle:'short',timeStyle:'short'}):'—';
 const money=x=>Number(x||0).toLocaleString(lang==='uk'?'uk-UA':'en-GB')+' ₴';
-const emptyRecords=()=>({cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[],fleet_service_events:[],fleet_files:[],fleet_inspections:[]});
+const emptyRecords=()=>({cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[],fleet_service_events:[],fleet_files:[],fleet_inspections:[],fleet_damage_reviews:[]});
 let sb=null,user=null,me=null,records=emptyRecords();
 const driverTabs=[['cars','🚙'],['announcements','◉'],['requests','▤'],['payments','₴'],['documents','📄'],['chat','💬'],['sos','🆘'],['account','◯']];
 const ownerTabs=[['dashboard','⌂'],['cars','🚙'],['drivers','♙'],['requests','▤'],['payments','₴'],['repairs','⚒'],['documents','📄'],['announcements','◉'],['chat','💬'],['sos','🆘'],['account','◯']];
@@ -252,11 +252,16 @@ function fleetEvidencePage(){
   const overall=['critical','attention','ok','unknown'].find(k=>[x.engine,x.brakes,x.tires,x.body].includes(k))||'unknown';
   return `<div class="line"><div><b>${e(carName(x.car_id))}</b> · ${d(x.inspected_at)}<div class="small">Оцінка: ${e(stateLabel[overall])} · Двигун: ${e(vals[0])} · Гальма: ${e(vals[1])} · Шини: ${e(vals[2])} · Кузов: ${e(vals[3])}</div>${x.odometer_km!=null?'<div class="small">Пробіг: '+e(x.odometer_km)+' км</div>':''}${x.notes?'<div class="small">'+e(x.notes)+'</div>':''}</div></div>`;
  }).join('');
+ const photoOptions=(records.fleet_files||[]).filter(x=>['damage_photo','inspection_photo'].includes(x.kind)).map(x=>`<option value="${e(x.id)}" data-car="${e(x.car_id)}">${e(carName(x.car_id))} · ${e(x.title)} · ${d(x.created_at)}</option>`).join('');
+ const reviews=(records.fleet_damage_reviews||[]).slice(0,15).map(x=>{
+  const result=x.result||{},findings=Array.isArray(result.possible_new_damage)?result.possible_new_damage:[];
+  return `<div class="line"><div><b>${e(carName(x.car_id))}</b> · ${d(x.created_at)}<div class="small">${e(result.summary||'Без висновку')}</div><div class="small">Можливі пошкодження: ${findings.length} · ${x.owner_decision?e(x.owner_decision):'Очікує рішення власника'}</div>${findings.slice(0,5).map(z=>'<div class="small">'+e(z.area||'')+' · '+e(z.type||'')+' · '+e(z.evidence||'')+'</div>').join('')}</div>${!x.owner_decision?`<div class="actions"><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="needs_inspection">Огляд</button><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="accepted">Підтвердити</button><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="rejected">Відхилити</button></div>`:''}</div>`;
+ }).join('');
  const files=(records.fleet_files||[]).slice(0,30).map(x=>`<div class="line"><div><b>${e(x.title)}</b> · ${e(carName(x.car_id))}<div class="small">${e(x.kind)} · ${d(x.created_at)}</div></div><button type="button" class="btn secondary tiny" data-action="fleet-open-file" data-id="${e(x.id)}">Відкрити</button></div>`).join('');
  return `<section class="card"><h2>📷 Огляди та документи автопарку</h2><p class="small">Захищене зберігання договорів, актів та фотографій. Фото можна додати для подальшого порівняння. Автоматичний ІІ-аналіз пошкоджень поки не підключений.</p>${records.cars.length?`
  <form id="fleet-inspection-form" class="form"><h3>Технічний огляд</h3><label class="field">Автомобіль<select name="car_id" required>${opts}</select></label><label class="field">Пробіг, км<input type="number" min="0" name="odometer_km"></label><div class="row stack"><label class="field">Двигун<select name="engine">${stateOptions}</select></label><label class="field">Гальма<select name="brakes">${stateOptions}</select></label><label class="field">Шини<select name="tires">${stateOptions}</select></label><label class="field">Кузов<select name="body">${stateOptions}</select></label></div><label class="field">Зауваження<textarea name="notes" maxlength="2000"></textarea></label><button class="btn" type="submit">Зберегти огляд</button></form>
  <form id="fleet-file-form" class="form"><h3>Договір, акт або фото</h3><label class="field">Автомобіль<select name="car_id" required>${opts}</select></label><label class="field">Тип<select name="kind"><option value="contract">Договір</option><option value="handover_act">Акт видачі</option><option value="return_act">Акт повернення</option><option value="damage_photo">Фото пошкодження</option><option value="inspection_photo">Фото огляду</option><option value="other">Інше</option></select></label><label class="field">Назва<input name="title" required minlength="2" maxlength="160"></label><label class="field">Файл (JPG, PNG, WebP або PDF до 15 МБ)<input name="file" type="file" required accept="image/jpeg,image/png,image/webp,application/pdf"></label><button class="btn" type="submit">Завантажити захищено</button></form>`:'<p>Спочатку додайте автомобіль.</p>'}
- <h3>Історія оглядів</h3>${inspections||'<p class="small">Оглядів ще немає.</p>'}<h3>Архів файлів</h3>${files||'<p class="small">Файлів ще немає.</p>'}</section>`;
+ <h3>ІІ-порівняння фото</h3><p class="small">Оберіть фото ДО і ПІСЛЯ одного авто. ІІ може помилятися через ракурс, світло чи забруднення. Аналіз запускається лише після натискання кнопки та за наявності серверного ключа.</p>${photoOptions?`<form id="fleet-damage-ai-form" class="form"><label class="field">Фото ДО<select name="before_file_id" required>${photoOptions}</select></label><label class="field">Фото ПІСЛЯ<select name="after_file_id" required>${photoOptions}</select></label><button class="btn" type="submit">Порівняти фотографії</button></form>`:'<p class="small">Спочатку завантажте два фото огляду.</p>'}<h3>Висновки ІІ</h3>${reviews||'<p class="small">Порівнянь ще немає.</p>'}<h3>Історія оглядів</h3>${inspections||'<p class="small">Оглядів ще немає.</p>'}<h3>Архів файлів</h3>${files||'<p class="small">Файлів ще немає.</p>'}</section>`;
 }
 function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const total=records.cars.length, drivers=records.profiles.filter(x=>x.role==='driver');
@@ -454,10 +459,10 @@ async function load({preserveDraft=false}={}){
   if(me&&isOwner()&&!sessionInitialized)page='dashboard';
   sessionInitialized=true;
   if(me){
-   const targets=[sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('fleet_service_events').select('*').order('created_at',{ascending:false}).limit(500),sb.from('fleet_files').select('*').order('created_at',{ascending:false}).limit(250),sb.from('fleet_inspections').select('*').order('inspected_at',{ascending:false}).limit(250),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,full_name,phone,role,access'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];
+   const targets=[sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('fleet_service_events').select('*').order('created_at',{ascending:false}).limit(500),sb.from('fleet_files').select('*').order('created_at',{ascending:false}).limit(250),sb.from('fleet_inspections').select('*').order('inspected_at',{ascending:false}).limit(250),sb.from('fleet_damage_reviews').select('*').order('created_at',{ascending:false}).limit(100),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,full_name,phone,role,access'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];
    const loaded=await Promise.all(targets);
    if(version!==loadVersion||user?.id!==expectedUserId)return;
-   const keys=['payment_claims','repair_jobs','repair_parts','expense_entries','fleet_service_events','fleet_files','fleet_inspections','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'];
+   const keys=['payment_claims','repair_jobs','repair_parts','expense_entries','fleet_service_events','fleet_files','fleet_inspections','fleet_damage_reviews','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'];
    const nextRecords=emptyRecords();
    for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
    records=nextRecords;
@@ -480,7 +485,13 @@ async function mutation(promise,success){
  await load();
  return true;
 }
-async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='fleet-open-file'){
+async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='damage-decision'){
+  if(!isOwner())return;
+  const decision=btn.dataset.decision;
+  if(!['accepted','rejected','needs_inspection'].includes(decision))return;
+  return mutation(sb.from('fleet_damage_reviews').update({owner_decision:decision,confirmed_at:new Date().toISOString()}).eq('id',id).is('owner_decision',null).select());
+ }
+ if(a==='fleet-open-file'){
   if(!isOwner())return;
   const file=records.fleet_files.find(x=>x.id===id);if(!file)return;
   const tab=window.open('about:blank','_blank');
@@ -601,7 +612,7 @@ document.addEventListener('change',async evt=>{
 document.addEventListener('change',evt=>{if(evt.target.id==='tech-passport-photo'&&evt.target.files?.[0])void readTechPassport(evt.target.files[0]);});
 document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(form?.id==='new-car')captureNewCarDraft();if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
-document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form','service-event','fleet-inspection-form','fleet-file-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
+document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form','service-event','fleet-inspection-form','fleet-file-form','fleet-damage-ai-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
  if(isOffline())throw new Error(offlineMessage());
  if(form.id==='auth-form'){const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');lastAuthEmail=email;
   if(mode==='reset'){assertAuthEmailCooldown();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:authRedirect});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса зареєстрована, лист для відновлення надіслано. Перевірте «Спам».':'If this address is registered, a recovery link has been sent. Check spam too.';render();return;}
@@ -629,6 +640,16 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   mode='signin';authNoticeIsError=false;authNotice=t('authRecoverDone');render();return;
  }
  if(form.id==='cash-payment-form'){if(!canApply())return;const rentalId=String(f.get('rental')||'');if(!records.rental_requests.some(r=>r.id===rentalId&&r.driver_id===me.id&&r.status==='approved'))throw Error(t('noApprovedRental'));const amount=Number(f.get('amount'));if(!(amount>0&&amount<=1000000))throw Error(t('amount'));if(!window.confirm(t('paymentHint')))return;await mutation(sb.from('payment_claims').insert({driver_id:me.id,rental_request_id:rentalId,method:f.get('method'),amount,driver_note:String(f.get('note')||'').trim()}),t('declared'));return;}
+ if(form.id==='fleet-damage-ai-form'){
+  if(!isOwner())return;
+  const before_file_id=String(f.get('before_file_id')),after_file_id=String(f.get('after_file_id'));
+  const photos=records.fleet_files.filter(x=>x.id===before_file_id||x.id===after_file_id);
+  if(before_file_id===after_file_id||photos.length!==2||photos[0].car_id!==photos[1].car_id)throw Error('Оберіть два різні фото одного автомобіля');
+  const {data,error}=await sb.functions.invoke('nikcar-damage-ai',{body:{car_id:photos[0].car_id,before_file_id,after_file_id}});
+  if(error)throw error;
+  if(data?.error)throw Error(data.message||data.error);
+  toast('Попередній ІІ-висновок збережено. Перевірте його вручну.');await load();return;
+ }
  if(form.id==='fleet-inspection-form'){
   if(!isOwner())return;
   const states=['ok','attention','critical','unknown'],entry={car_id:String(f.get('car_id'))};

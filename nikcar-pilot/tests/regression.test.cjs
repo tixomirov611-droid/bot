@@ -569,7 +569,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.17\.0/);
+ assert.match(html,/app\.js\?v=0\.18\.0/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
@@ -600,4 +600,12 @@ test('fleet evidence is owner-only, uses private storage and does not claim AI d
  assert.match(source,/if\(form.id==='fleet-file-form'\)/);
  assert.match(source,/if\(form.id==='fleet-inspection-form'\)/);
  assert.match(source,/fleetEvidencePage\(\)/);
+});
+
+test('damage AI requires same-car photos and owner confirmation',()=>{
+ assert.match(source,/fleet-damage-ai-form/);
+ assert.match(source,/nikcar-damage-ai/);
+ assert.match(source,/photos\[0\]\.car_id!==photos\[1\]\.car_id/);
+ assert.match(source,/owner_decision:decision/);
+ assert.match(source,/ІІ може помилятися/);
 });
