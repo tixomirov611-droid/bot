@@ -4,7 +4,7 @@
  // Uses only native Node 20+ fetch, no service-role credentials.
 const required=['NIKCAR_SUPABASE_URL','NIKCAR_PUBLISHABLE_KEY','NIKCAR_TEST_EMAIL','NIKCAR_TEST_PASSWORD'];
 for(const k of required)if(!process.env[k])throw Error('Missing '+k);
-const url=process.env.NIKCAR_SUPABASE_URL.replace(/\\/$/,'');
+const url=process.env.NIKCAR_SUPABASE_URL.replace(/[/]$/,'');
 const key=process.env.NIKCAR_PUBLISHABLE_KEY;
 const login=await fetch(url+'/auth/v1/token?grant_type=password',{
  method:'POST',headers:{apikey:key,'Content-Type':'application/json'},
