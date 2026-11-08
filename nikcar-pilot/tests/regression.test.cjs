@@ -569,7 +569,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.18\.0/);
+ assert.match(html,/app\.js\?v=0\.19\.0/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
