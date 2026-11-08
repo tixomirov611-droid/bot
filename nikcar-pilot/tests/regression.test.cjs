@@ -109,6 +109,9 @@ test('double-click confirming a payment sends only one RPC and unlocks afterward
   const evt={target:{closest:()=>button}};
   await h.fire('click',evt);
   await h.fire('click',evt);
+  // Opposite decision on the same payment must share the same in-flight lock.
+  const rejecting={dataset:{action:'reject-payment',id:'p1'},disabled:false,isConnected:true};
+  await h.fire('click',{target:{closest:()=>rejecting}});
   assert.equal(count,1);
   assert.equal(button.disabled,true);
   release();
