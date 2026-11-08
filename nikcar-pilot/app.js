@@ -105,6 +105,7 @@ const protectedActions=new Set([
 function clearAccountState(){
  loadVersion++;forceMutationRefresh=0;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
  sessionInitialized=false;showMore=false;page='cars';lastAuthEmail='';
+ if(typeof ownerUiDrafts!=='undefined')ownerUiDrafts.clear();
  mode='signin';authMethod='password';authNotice='';authNoticeIsError=false;
 }
 function refreshWhenVisible(){
@@ -331,7 +332,43 @@ function restoreNewCarDraft(){
   if(input)input.value=value;
  }
 }
-function render(){captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);restoreNewCarDraft();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
+// Preserve unfinished owner inputs and driver-access selections between tabs.
+// Never persist passwords, files, private documents or form data to localStorage.
+const ownerUiDrafts=new Map();
+function captureOwnerUiDraft(){
+ if(!user||!isOwner())return;
+ const forms=[...document.querySelectorAll('#root form')];
+ for(const form of forms){
+  if(!form.id||['auth-form','profile-update','chat-send'].includes(form.id))continue;
+  const fields=[...form.querySelectorAll('input,select,textarea')].filter(el=>
+   el.name&&el.type!=='password'&&el.type!=='file'&&el.type!=='hidden');
+  if(!fields.length)continue;
+  const values={};
+  for(const el of fields)values[el.name]=el.type==='checkbox'?el.checked:el.value;
+  ownerUiDrafts.set(user.id+':'+form.id,values);
+ }
+ const selections={};
+ document.querySelectorAll('select[data-driver-id]').forEach(el=>{selections[el.dataset.driverId]=el.value;});
+ if(Object.keys(selections).length)ownerUiDrafts.set(user.id+':driver-access',selections);
+}
+function restoreOwnerUiDraft(){
+ if(!user||!isOwner())return;
+ for(const form of document.querySelectorAll('#root form')){
+  if(!form.id||form.id==='new-car')continue;
+  const values=ownerUiDrafts.get(user.id+':'+form.id);
+  if(!values)continue;
+  for(const el of form.querySelectorAll('input,select,textarea')){
+   if(!el.name||!(el.name in values)||el.type==='password'||el.type==='file'||el.type==='hidden')continue;
+   if(el.type==='checkbox')el.checked=!!values[el.name];else el.value=values[el.name];
+  }
+ }
+ const selections=ownerUiDrafts.get(user.id+':driver-access')||{};
+ document.querySelectorAll('select[data-driver-id]').forEach(el=>{
+  const value=selections[el.dataset.driverId];
+  if(value&&[...el.options].some(opt=>opt.value===value))el.value=value;
+ });
+}
+function render(){captureOwnerUiDraft();captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);restoreNewCarDraft();restoreOwnerUiDraft();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
 async function load({preserveDraft=false}={}){
  if(!sb||!user){me=null;records=emptyRecords();render();return;}
  const expectedUserId=user.id,version=++loadVersion;
@@ -382,7 +419,7 @@ async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(
  if(a==='driver-docs'){if(!isOwner())return;const driver=records.profiles.find(p=>p.id===id&&p.role==='driver');if(!driver)return;selectedDriverId=driver.id;page='documents';render();window.scrollTo(0,0);return;}if(a==='all-driver-docs'){if(!isOwner())return;selectedDriverId=null;page='documents';render();return;}
  if(a==='set-driver-access'){
   if(!isOwner())return;const sel=document.querySelector(`select[data-driver-id="${id}"]`);const desired=sel?.value;
-  if(!desired||!window.confirm(t('confirmChange')))return;
+  if(!desired)return;
   return mutation(sb.rpc('nikcar_owner_set_driver_access',{target_driver_id:id,target_access:desired}),t('applyAccess'));
  }
  if(a==='delete-announcement'){
