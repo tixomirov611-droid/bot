@@ -85,6 +85,32 @@ test('background refresh updates records without resetting unsaved form', async 
   assert.notEqual(h.root.innerHTML,'INITIAL');
 });
 
+test('successful mutation still redraws when a background load supersedes its refresh', async () => {
+  const h=harness();
+  const resolvers=[];
+  const client={from:()=>({
+    select(){return this;},order(){return this;},limit(){return this;},eq(){return this;},
+    maybeSingle(){return new Promise(resolve=>resolvers.push(resolve));},
+    then(resolve,reject){return Promise.resolve({data:[],error:null}).then(resolve,reject);}
+  })};
+  h.app.setClient(client);
+  h.app.setUser({id:'u1'});
+  h.app.setMe(owner);
+  h.app.setRecords(records());
+  h.setDirty(true);
+  const mutation=h.app.mutation(Promise.resolve({error:null,data:null}),'saved');
+  await microtasks();
+  assert.equal(resolvers.length,1);
+  const background=h.app.load({preserveDraft:true});
+  assert.equal(resolvers.length,2);
+  resolvers[0]({data:owner,error:null});
+  await mutation;
+  assert.equal(h.root.innerHTML,'INITIAL');
+  resolvers[1]({data:owner,error:null});
+  await background;
+  assert.notEqual(h.root.innerHTML,'INITIAL');
+});
+
 test('role or access demotion redraws immediately even if an old form is dirty', async () => {
   const h=harness();
   h.app.setUser({id:'u1'});
