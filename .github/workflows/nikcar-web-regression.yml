@@ -1,0 +1,30 @@
+name: NikCar Fleet web regression
+
+on:
+  pull_request:
+    paths:
+      - 'nikcar-pilot/**'
+      - '.github/workflows/nikcar-web-regression.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'nikcar-pilot/**'
+      - '.github/workflows/nikcar-web-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Static syntax and offline regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check application syntax
+        run: node --check nikcar-pilot/app.js
+      - name: Test login, forms, data isolation and duplicate actions
+        run: node --test nikcar-pilot/tests/regression.test.cjs

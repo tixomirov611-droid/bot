@@ -30,7 +30,7 @@ async function checkOAuthAvailability(){
   for(const provider of ['google','apple','azure','github']){
    if(typeof providers[provider]==='boolean')oauthEnabled[provider]=providers[provider];
   }
-  if(!user)render();
+  if(!user&&!hasUnsavedForm())render();
  }catch(_err){/* Keep configured status. Unsupported providers remain unavailable. */}
 }
 
@@ -64,8 +64,24 @@ const ownerTabs=[['dashboard','⌂'],['cars','🚙'],['drivers','♙'],['request
 const tabsForRole=()=>isOwner()?ownerTabs:driverTabs;
 let carEditor=null;let sessionInitialized=false;let showMore=false;let currentRepair=null;
 let selectedDriverId=null,currentAuthUserId=null,loadVersion=0,lastForegroundRefresh=0;
+let forceMutationRefresh=0;
+// Keep user-entered data intact while background Realtime/visibility updates arrive.
+function hasUnsavedForm(){return !!document.querySelector('form[data-dirty="1"],form[data-submitting="1"]');}
+const inFlightActions=new Set();
+const actionGroups={
+ 'confirm-payment':'payment','reject-payment':'payment',
+ 'approve-request':'rental','reject-request':'rental','cancel-request':'rental',
+ 'claim-sos':'sos','release-sos':'sos','finish-sos':'sos','cancel-sos':'sos'
+};
+const protectedActions=new Set([
+ 'signout','resend-confirm','submit-doc-choice','open-doc',
+ 'approve-request','reject-request','cancel-request',
+ 'confirm-payment','reject-payment','post-repair','remove-part',
+ 'set-driver-access','delete-announcement',
+ 'claim-sos','release-sos','finish-sos','cancel-sos'
+]);
 function clearAccountState(){
- loadVersion++;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
+ loadVersion++;forceMutationRefresh=0;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
  sessionInitialized=false;showMore=false;page='cars';lastAuthEmail='';
  mode='signin';authMethod='password';authNotice='';authNoticeIsError=false;
 }
@@ -73,7 +89,7 @@ function refreshWhenVisible(){
  if(document.visibilityState==='hidden'||!sb||!user||recoveryMode)return;
  const now=Date.now();
  if(now-lastForegroundRefresh<12000)return;
- lastForegroundRefresh=now;void load();
+ lastForegroundRefresh=now;void load({preserveDraft:true});
 }
 window.addEventListener('focus',refreshWhenVisible);
 document.addEventListener('visibilitychange',refreshWhenVisible);
@@ -227,13 +243,15 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
 function render(){document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
-async function load(){
+async function load({preserveDraft=false}={}){
  if(!sb||!user){me=null;records=emptyRecords();render();return;}
  const expectedUserId=user.id,version=++loadVersion;
+ let accessChanged=false;
  try{
   const {data,error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at').eq('user_id',expectedUserId).maybeSingle();
   if(version!==loadVersion||user?.id!==expectedUserId)return;
   if(error)throw error;
+  accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
   me=data;
   if(me&&isOwner()&&!sessionInitialized)page='dashboard';
   sessionInitialized=true;
@@ -246,13 +264,24 @@ async function load(){
    for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
    records=nextRecords;
   }else records=emptyRecords();
-  render();
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }catch(err){
   if(version!==loadVersion||user?.id!==expectedUserId)return;
-  toast(`${t('systemError')}: ${err.message||err}`);render();
+  toast(`${t('systemError')}: ${err.message||err}`);
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }
 }
-async function mutation(promise,success){const {error,data}=await promise;if(error){toast(error.message);return false;}if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}toast(success||'OK');await load();return true;}
+async function mutation(promise,success){
+ const {error,data}=await promise;
+ if(error){toast(error.message);return false;}
+ if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}
+ toast(success||'OK');
+ // Leave this flag set if a newer background load supersedes our refresh.
+ // The first successfully rendered load consumes it (even with a dirty form).
+ forceMutationRefresh++;
+ await load();
+ return true;
+}
 async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='nav'){showMore=false;if(btn.dataset.page==='documents'&&isOwner())selectedDriverId=null;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){const {error}=await sb.auth.signOut();if(error)throw error;user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
  if(a==='select-repair'){currentRepair=id;page='repairs';render();return;}
  if(a==='voice-repair'){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(t('repairVoiceUnavailable'));return;}const speech=new SR();speech.lang=lang==='uk'?'uk-UA':'en-US';speech.interimResults=false;speech.maxAlternatives=1;speech.onresult=event=>{const input=document.getElementById('repair-voice-target');if(input)input.value=(input.value+' '+event.results[0][0].transcript).trim();};speech.onerror=()=>toast(t('repairVoiceUnavailable'));speech.start();return;}
@@ -286,7 +315,18 @@ async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(
  if(a==='finish-sos'){return mutation(sb.from('sos_requests').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',id).eq('status','claimed').eq('helper_id',me.id).select(),t('resolved'));}
  if(a==='cancel-sos'){return mutation(sb.from('sos_requests').update({status:'cancelled'}).eq('id',id).eq('status','open').eq('requester_id',me.id).select(),t('cancelled'));}
 }
-document.addEventListener('click',evt=>{const b=evt.target.closest('button[data-action]');if(b)clickAction(b).catch(err=>toast(err.message||err));});
+document.addEventListener('click',evt=>{
+ const b=evt.target.closest('button[data-action]');
+ if(!b)return;
+ const action=b.dataset.action,key=(actionGroups[action]||action)+':'+(b.dataset.id||'');
+ if(!protectedActions.has(action)){void clickAction(b).catch(err=>toast(err.message||err));return;}
+ if(inFlightActions.has(key))return;
+ inFlightActions.add(key);b.disabled=true;
+ void clickAction(b).catch(err=>toast(err.message||err)).finally(()=>{
+  inFlightActions.delete(key);
+  if(b.isConnected)b.disabled=false;
+ });
+});
 document.addEventListener('change',async evt=>{
  const f=evt.target;
  if(f.id==='document-car'){selectedCar=f.value||null;render();return;}
@@ -311,8 +351,8 @@ document.addEventListener('change',async evt=>{
  }catch(error){toast(error.message||String(error));}
  finally{docBusy=false;f.disabled=false;}
 });
-document.addEventListener('input',evt=>{if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
-document.addEventListener('change',evt=>{if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
+document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
+document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
 document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
  if(form.id==='auth-form'){const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');lastAuthEmail=email;
   if(mode==='reset'){assertAuthEmailCooldown();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:authRedirect});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса зареєстрована, лист для відновлення надіслано. Перевірте «Спам».':'If this address is registered, a recovery link has been sent. Check spam too.';render();return;}
@@ -356,5 +396,5 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
  await load();
  void checkOAuthAvailability();
  for(const table of ['chat_messages','sos_requests','rental_requests','announcements','payment_claims','repair_jobs'])
-  sb.channel(`nikcar-${table}`).on('postgres_changes',{event:'*',schema:'public',table},()=>{if(user&&!recoveryMode)load();}).subscribe();
+  sb.channel(`nikcar-${table}`).on('postgres_changes',{event:'*',schema:'public',table},()=>{if(user&&!recoveryMode)void load({preserveDraft:true});}).subscribe();
  }catch(err){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('systemError')}</h1><p>${e(err.message||err)}</p></div></div>`;}})();
