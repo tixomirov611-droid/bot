@@ -444,3 +444,13 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
 :root[data-theme="dark"] .more-sheet button:not(.btn):hover{background:#3a4028}
 :root[data-theme="dark"] .mobilebar button.active{color:#dfff00}
 :root[data-theme="dark"] #toast{background:#30331d;color:#f5ffdb}
+
+
+/* v0.14.1: lime is decorative on white; readable text uses dark olive. */
+:root:not([data-theme="dark"]) .mobilebar button.active{color:#405000}
+:root:not([data-theme="dark"]) .auth-intro .eyebrow{color:#4c6000}
+:root:not([data-theme="dark"]) .auth-method.active{color:#3d4d00}
+:root:not([data-theme="dark"]) .auth-tab.active{color:#3d4d00}
+:root:not([data-theme="dark"]) .notice-line{color:#405100}
+:root[data-theme="dark"] .mobilebar button.active{color:#dfff00}
+:root[data-theme="dark"] .auth-intro .eyebrow{color:#dfff00}
