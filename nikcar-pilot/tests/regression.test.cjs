@@ -441,7 +441,14 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.14\.0/);
+ assert.match(html,/style\.css\?v=0\.14\.1/);
  assert.equal(manifest.theme_color,'#DFFF00');
  assert.match(source,/SERVICE · FLEET/);
+});
+
+test('light mode lime labels remain readable while dark mode retains neon accent', () => {
+ const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+ assert.match(css,/:root:not\(\[data-theme="dark"\]\) \.mobilebar button\.active\{color:#405000\}/);
+ assert.match(css,/:root:not\(\[data-theme="dark"\]\) \.auth-intro \.eyebrow\{color:#4c6000\}/);
+ assert.match(css,/:root\[data-theme="dark"\] \.mobilebar button\.active\{color:#dfff00\}/);
 });
