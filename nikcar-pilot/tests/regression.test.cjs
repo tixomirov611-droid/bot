@@ -571,3 +571,12 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
  assert.match(html,/app\.js\?v=0\.15\.2/);
 });
+
+test('fleet intelligence is owner-only and labels estimates accurately', () => {
+ assert.match(source,/function fleetIntelligencePage\(\)/);
+ assert.match(source,/if\(!isOwner\(\)\)return '';/);
+ assert.match(source,/x\.status==='confirmed'/);
+ assert.match(source,/не бухгалтерський прибуток/);
+ assert.match(source,/peers\.length<3/);
+ assert.match(source,/fleetIntelligencePage\(\)/);
+});
