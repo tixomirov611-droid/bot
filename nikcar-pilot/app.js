@@ -81,7 +81,7 @@ const protectedActions=new Set([
  'claim-sos','release-sos','finish-sos','cancel-sos'
 ]);
 function clearAccountState(){
- loadVersion++;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
+ loadVersion++;forceMutationRefresh=0;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
  sessionInitialized=false;showMore=false;page='cars';lastAuthEmail='';
  mode='signin';authMethod='password';authNotice='';authNoticeIsError=false;
 }
@@ -264,11 +264,11 @@ async function load({preserveDraft=false}={}){
    for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
    records=nextRecords;
   }else records=emptyRecords();
-  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm())render();
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }catch(err){
   if(version!==loadVersion||user?.id!==expectedUserId)return;
   toast(`${t('systemError')}: ${err.message||err}`);
-  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm())render();
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }
 }
 async function mutation(promise,success){
@@ -276,8 +276,10 @@ async function mutation(promise,success){
  if(error){toast(error.message);return false;}
  if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}
  toast(success||'OK');
+ // Leave this flag set if a newer background load supersedes our refresh.
+ // The first successfully rendered load consumes it (even with a dirty form).
  forceMutationRefresh++;
- try{await load();}finally{forceMutationRefresh--;}
+ await load();
  return true;
 }
 async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='nav'){showMore=false;if(btn.dataset.page==='documents'&&isOwner())selectedDriverId=null;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){const {error}=await sb.auth.signOut();if(error)throw error;user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
