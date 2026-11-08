@@ -44,7 +44,7 @@ function harness() {
   const factory = new Function('document','window','location','localStorage','sessionStorage','navigator','FormData','setTimeout','clearTimeout','crypto',
     logic + '\nreturn {setUser:x=>user=x,setMe:x=>me=x,setClient:x=>sb=x,setRecords:x=>records=x,' +
     'get:()=>({user,me,records,page,loadVersion,carEditor}),load,mutation,click:clickAction,docs:documentsPage,' +
-    'authErrorMessage,clear:clearAccountState};');
+    'authErrorMessage,clear:clearAccountState,setRecovery:x=>setRecoveryMode(x),getRecovery:()=>({active:recoveryMode,notice:authNotice,isError:authNoticeIsError})};');
   const app = factory(doc, win, {hash:'',search:''},storage,storage,navigatorMock,FormDataMock,()=>0,()=>{},{randomUUID:()=> 'mock-file'});
   async function fire(k, event) {
     for(const fn of events.get(k) || []) await fn(event);
@@ -281,4 +281,76 @@ test('offline document upload never reaches private storage', async () => {
  await h.fire('change',{target:input});
  assert.equal(uploads,0);
  assert.match(h.toast.textContent,/Немає інтернету/);
+});
+
+test('successful recovery updates password and confirms sign-out before showing success', async () => {
+ const h=harness();
+ h.app.setUser({id:'recovery-user'});
+ h.app.setMe(owner);
+ h.app.setRecords(records({profiles:[driver],cars:[{id:'c1'}]}));
+ h.app.setRecovery(true);
+ let updates=0,logouts=0;
+ h.app.setClient({auth:{
+  updateUser:async({password})=>{updates++;assert.equal(password,'secure-new-password');return {error:null};},
+  signOut:async()=>{logouts++;return {error:null};}
+ }});
+ const form={id:'new-password-form',dataset:{},values:{password:'secure-new-password',confirm_password:'secure-new-password'},
+  isConnected:true,querySelector:()=>({disabled:false})};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(updates,1);assert.equal(logouts,1);
+ assert.equal(h.app.get().user,null);
+ assert.equal(h.app.getRecovery().active,false);
+ assert.equal(h.app.get().records.profiles.length,0);
+ assert.equal(h.app.getRecovery().isError,false);
+});
+
+test('recovery must not report completed logout when signOut returns an error', async () => {
+ const h=harness();
+ h.app.setUser({id:'recovery-user'});h.app.setMe(owner);h.app.setRecovery(true);
+ let updates=0,logouts=0;
+ h.app.setClient({auth:{
+  updateUser:async()=>{updates++;return {error:null};},
+  signOut:async()=>{logouts++;return {error:new Error('Simulated sign-out failure')};}
+ }});
+ const form={id:'new-password-form',dataset:{},values:{password:'secure-new-password',confirm_password:'secure-new-password'},
+  isConnected:true,querySelector:()=>({disabled:false})};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(updates,1);assert.equal(logouts,1);
+ assert.equal(h.app.get().user.id,'recovery-user');
+ assert.equal(h.app.getRecovery().active,true);
+ assert.equal(h.app.getRecovery().isError,true);
+ assert.match(h.app.getRecovery().notice,/Пароль змінено, але завершити сеанс не вдалося/);
+ assert.match(h.root.innerHTML,/data-action="signout"/);
+});
+
+test('recovery sign-out network exception leaves the session visible with a warning', async () => {
+ const h=harness();
+ h.app.setUser({id:'recovery-user'});h.app.setMe(owner);h.app.setRecovery(true);
+ h.app.setClient({auth:{
+  updateUser:async()=>({error:null}),
+  signOut:async()=>{throw new Error('network dropped');}
+ }});
+ const form={id:'new-password-form',dataset:{},values:{password:'secure-new-password',confirm_password:'secure-new-password'},
+  isConnected:true,querySelector:()=>({disabled:false})};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(h.app.getRecovery().active,true);
+ assert.equal(h.app.getRecovery().isError,true);
+ assert.equal(h.app.get().user.id,'recovery-user');
+});
+
+test('password update error does not attempt logout or pretend password was changed', async () => {
+ const h=harness();
+ h.app.setUser({id:'recovery-user'});h.app.setMe(owner);h.app.setRecovery(true);
+ let logouts=0;
+ h.app.setClient({auth:{
+  updateUser:async()=>({error:{code:'weak_password',message:'weak password'}}),
+  signOut:async()=>{logouts++;return {error:null};}
+ }});
+ const form={id:'new-password-form',dataset:{},values:{password:'secure-new-password',confirm_password:'secure-new-password'},
+  isConnected:true,querySelector:()=>({disabled:false})};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(logouts,0);
+ assert.equal(h.app.getRecovery().active,true);
+ assert.equal(h.app.getRecovery().isError,true);
+ assert.doesNotMatch(h.app.getRecovery().notice,/Пароль змінено/);
 });
