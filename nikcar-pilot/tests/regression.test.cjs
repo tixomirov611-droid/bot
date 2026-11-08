@@ -609,3 +609,10 @@ test('damage AI requires same-car photos and owner confirmation',()=>{
  assert.match(source,/owner_decision:decision/);
  assert.match(source,/ІІ може помилятися/);
 });
+
+test('fleet service mileage uses latest inspection and AI photos exclude PDFs',()=>{
+ assert.match(source,/latestInspection=\(records\.fleet_inspections/);
+ assert.match(source,/effectiveKm=Math\.max/);
+ assert.match(source,/test\(x\.object_path\)/);
+ assert.match(source,/Для фотоогляду завантажте JPG/);
+});
