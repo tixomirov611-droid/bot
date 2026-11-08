@@ -45,6 +45,14 @@ With custom SMTP enabled on a free Supabase project, [Email Templates](https://s
 
 All templates use the documented Supabase Go-template variable `{{ .ConfirmationURL }}`. Do not replace it with a hardcoded site URL. Keep the button a single-use verification link. Templates contain no tracking pixels and no user-controlled personalized fields.
 
+## Recovery email: NikCar signature and logo (8 November 2026)
+
+The updated **Reset password** template in `recovery.html` has the exact Russian sign-off **«С уважением, команда NikCar»** and a small PNG of the existing NikCar car logo in the footer. The logo is published as `/email-logo.png` on the existing Render Static Site; the visible `NikCar FLEET CONTROL` wordmark is the fallback when an email client blocks remote images.
+
+**Important:** merging/redeploying HTML in GitHub does **not** update the active Supabase Auth template. In [Supabase → Authentication → Email Templates](https://supabase.com/dashboard/project/cvrbpeuadfxgumvmosni/auth/templates), open **Reset password**, set the subject to `NikCar — відновлення пароля`, paste the complete current `nikcar-pilot/email-templates/recovery.html` source in the HTML Body field, and save. The HTML can be opened from `https://nikcar-cloud-pilot.onrender.com/email-templates/recovery.html` after deployment (view source / copy HTML), or directly from GitHub.
+
+Keep the exact **`{{ .ConfirmationURL }}`** template expression; changing it would break the existing tested recovery flow. One end-to-end recovery email after the Auth template is saved is required to confirm the signature and remote image show in the user's email client. Mail clients can block images even when the email is otherwise correct.
+
 ## End-to-end test
 
 1. Verify Supabase Site URL and allowlisted redirect.
