@@ -414,3 +414,16 @@ test('dark palette covers navigation, account forms, banners and mobile layout',
  assert.match(html,/localStorage\.getItem\('nikcar-theme'\)/);
  assert.ok(html.indexOf("localStorage.getItem('nikcar-theme')") < html.indexOf('rel="stylesheet"'),'saved theme must load before CSS');
 });
+
+test('recovery email keeps the valid link and includes NikCar signature and raster logo', () => {
+ const recovery=fs.readFileSync(path.join(__dirname,'..','email-templates','recovery.html'),'utf8');
+ assert.equal((recovery.match(/\{\{ \.ConfirmationURL \}\}/g)||[]).length,1);
+ assert.match(recovery,/С уважением, команда NikCar/);
+ assert.match(recovery,/nikcar-cloud-pilot\.onrender\.com\/email-logo\.png/);
+ assert.match(recovery,/Nik<span style="color:#098b7e;">Car<\/span>/);
+ assert.match(recovery,/Нікому не передавайте це посилання/);
+ const logo=fs.readFileSync(path.join(__dirname,'..','email-logo.png'));
+ assert.equal(logo.toString('hex',0,8),'89504e470d0a1a0a','Email icon must be a PNG, not unsupported SVG');
+ assert.equal(logo.readUInt32BE(16),96);
+ assert.equal(logo.readUInt32BE(20),96);
+});
