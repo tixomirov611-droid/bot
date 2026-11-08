@@ -306,7 +306,7 @@ function announcementsPage(){const articles=records.announcements.map(a=>`<artic
  return `<div class="notice-line"><span class="notice-dot"></span><b>${t('fuelOff')}</b><span class="small">${t('fuelNotice')}</span></div><div class="news-grid">${compose}<section class="news-list">${articles||`<div class="card">${t('emptyNews')}</div>`}</section></div>`;
 }
 
-function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><div class="card" style="padding:14px;margin:12px 0"><label class="field">📷 Фото техпаспорта (OCR)<input id="tech-passport-photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small" id="tech-passport-status" role="status">Розпізнавання на пристрої. Перевірте дані перед збереженням.</p></div><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
+function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><div class="card" style="padding:14px;margin:12px 0"><label class="field">📷 Фото техпаспорта або скриншот із Дії (OCR)<input id="tech-passport-photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small" id="tech-passport-status" role="status">Розпізнавання на пристрої. Перевірте дані перед збереженням.</p><p class="small" id="tech-passport-vin" aria-live="polite"></p></div><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
 function docFor(kind,driver,car=null){return records.driver_documents.find(d=>d.kind===kind&&d.driver_id===driver&&(kind==='rental_contract'?d.car_id===car:d.car_id===null));}
 function docRequiredTypes(){return ['passport_1','passport_2','passport_3','tax_id','rental_contract'];}
 function hasLocalDocs(car){return docRequiredTypes().every(kind=>!!docFor(kind,me.id,kind==='rental_contract'?car:null));}
@@ -366,21 +366,34 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
 let passportOcrBusy=false;
 function parseTechPassport(text){
- const lines=String(text||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
- const field=code=>{
-  const i=lines.findIndex(x=>x.startsWith(code+' ')||x.startsWith(code+':'));
-  return i<0?'':(lines[i].slice(code.length).replace(/^[: ]+/,'')||lines[i+1]||'').trim();
+ const raw=String(text||'').replace(/\u00a0/g,' ');
+ const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const norm=x=>String(x||'').toUpperCase().replace(/\s+/g,' ').trim();
+ const extractLabel=(pattern)=>{
+  for(let i=0;i<lines.length;i++){
+   const m=lines[i].match(pattern);
+   if(m){const tail=lines[i].slice(m.index+m[0].length).replace(/^[\s:–-]+/,'').trim();return tail||lines[i+1]||'';}
+  }
+  return '';
  };
- const plate=(field('A').match(/[A-ZА-ЯІЇЄ0-9]{4,12}/i)||[])[0]||'';
- const make=field('D.1').slice(0,45),model=field('D.3').slice(0,65);
- const y=String(text).match(/(?:рік випуску|year of manufacture)\\s*[: -]*((?:19|20)\\d{2})/i);
- return {plate,model:[make,model].filter(Boolean).join(' ').slice(0,120),year:y?y[1]:''};
+ const getCode=code=>extractLabel(new RegExp('^'+code.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
+ const make=extractLabel(/^(?:марка|make|brand)\s*:/i)||getCode('D.1');
+ const model=extractLabel(/^(?:модель|model)\s*:/i)||getCode('D.3');
+ const vinLine=extractLabel(/^(?:VIN|номер кузова|ідентифікаційний номер)\s*:/i)||getCode('E');
+ const vin=(vinLine.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'';
+ const plateLine=extractLabel(/^(?:державний номер|номерний знак|реєстраційний номер|номер авто|plate)\s*:/i)||getCode('A');
+ const plateMatch=plateLine.match(/\b[A-ZА-ЯІЇЄ]{2}\s*\d{4}\s*[A-ZА-ЯІЇЄ]{2}\b/i)||raw.match(/\b[A-ZА-ЯІЇЄ]{2}\s*\d{4}\s*[A-ZА-ЯІЇЄ]{2}\b/i);
+ const plate=plateMatch?plateMatch[0].replace(/\s+/g,''):'';
+ const yearLine=extractLabel(/^(?:рік випуску|рік виробництва|year of manufacture)\s*:/i);
+ const yearMatch=(yearLine||raw).match(/\b(?:19|20)\d{2}\b/);
+ const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/, '').trim()).filter(Boolean).join(' ').slice(0,120);
+ return {plate,model:cleanedModel,year:yearMatch?yearMatch[0]:'',vin};
 }
 async function readTechPassport(file){
  const status=document.getElementById('tech-passport-status'),input=document.getElementById('tech-passport-photo');
  if(!status||!input||passportOcrBusy||!isOwner())return;
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Лише JPG, PNG, WEBP до 6 МБ';return;}
- passportOcrBusy=true;input.disabled=true;status.textContent='Розпізнавання…';
+ passportOcrBusy=true;input.disabled=true;status.textContent='Розпізнавання фото або скриншота Дії…';
  try{
   if(!window.Tesseract)await new Promise((ok,fail)=>{
    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
@@ -389,9 +402,16 @@ async function readTechPassport(file){
   let result;try{result=await worker.recognize(file);}finally{await worker.terminate();}
   const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
   if(!form)return;
-  for(const name of ['plate','model','year']){const field=form.elements.namedItem(name);if(field&&!field.value.trim()&&values[name])field.value=values[name];}
-  form.dataset.dirty='1';status.textContent='Перевірте всі поля. Тариф введіть вручну.';
- }catch(_){status.textContent='Не вдалося розпізнати. Введіть дані вручну.';}
+  let filled=0;
+  for(const name of ['plate','model','year']){
+   const field=form.elements.namedItem(name);
+   if(field&&values[name]){field.value=values[name];filled++;}
+  }
+  form.dataset.dirty='1';captureNewCarDraft();
+  const vinPreview=document.getElementById('tech-passport-vin');
+  if(vinPreview)vinPreview.textContent=values.vin?'VIN: '+values.vin+' (лише попередній перегляд)':'VIN не розпізнано';
+  status.textContent=filled?'Заповнено полів: '+filled+'. Перевірте дані перед збереженням. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
+ }catch(err){status.textContent='Не вдалося розпізнати. Перевірте інтернет для завантаження OCR або введіть дані вручну.';}
  finally{passportOcrBusy=false;input.disabled=false;input.value='';}
 }
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
