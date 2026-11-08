@@ -441,7 +441,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.14\.1/);
+ assert.match(html,/style\.css\?v=0\.14\.2/);
  assert.equal(manifest.theme_color,'#DFFF00');
  assert.match(source,/SERVICE · FLEET/);
 });
@@ -451,4 +451,16 @@ test('light mode lime labels remain readable while dark mode retains neon accent
  assert.match(css,/:root:not\(\[data-theme="dark"\]\) \.mobilebar button\.active\{color:#405000\}/);
  assert.match(css,/:root:not\(\[data-theme="dark"\]\) \.auth-intro \.eyebrow\{color:#4c6000\}/);
  assert.match(css,/:root\[data-theme="dark"\] \.mobilebar button\.active\{color:#dfff00\}/);
+});
+
+test('readability pass protects readable text, mobile form sizing and keyboard focus', () => {
+ const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+ assert.match(css,/--muted:#4b565b/);
+ assert.match(css,/--muted:#c3c9c7/);
+ assert.match(css,/body\{font-size:15px;line-height:1\.55/);
+ assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
+ assert.match(css,/button:focus-visible,a:focus-visible/);
+ assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
+ assert.match(html,/style\.css\?v=0\.14\.2/);
 });

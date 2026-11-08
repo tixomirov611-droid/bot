@@ -454,3 +454,48 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
 :root:not([data-theme="dark"]) .notice-line{color:#405100}
 :root[data-theme="dark"] .mobilebar button.active{color:#dfff00}
 :root[data-theme="dark"] .auth-intro .eyebrow{color:#dfff00}
+
+
+/* v0.14.2: legibility pass. Keep acid lime for highlights, not low-contrast body copy. */
+:root:not([data-theme="dark"]){--ink:#171b1d;--muted:#4b565b;--accent-dark:#354600}
+:root[data-theme="dark"]{--ink:#f5f7f4;--muted:#c3c9c7}
+body{font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.field label,.field input,.field select,.field textarea,.driver-status-select{font-size:15px}
+.field input,.field select,.field textarea{min-height:44px}
+button,.btn,.nav button,.more-sheet button{line-height:1.4}
+.nav button,.mobilebar button{font-weight:700}
+:root:not([data-theme="dark"]) .brand em{color:#3d5000}
+:root:not([data-theme="dark"]) .eyebrow,
+:root:not([data-theme="dark"]) .auth-intro .eyebrow{color:#405300}
+:root:not([data-theme="dark"]) .auth-footer-note,
+:root:not([data-theme="dark"]) .sso-hint,
+:root:not([data-theme="dark"]) .sso-divider,
+:root:not([data-theme="dark"]) .provider-coming,
+:root:not([data-theme="dark"]) .sso-soon{color:#4c5655}
+:root:not([data-theme="dark"]) .nav button{color:#354246}
+:root:not([data-theme="dark"]) .nav button.active,
+:root:not([data-theme="dark"]) .mobilebar button.active{color:#344500}
+:root:not([data-theme="dark"]) .auth-method.active,
+:root:not([data-theme="dark"]) .auth-tab.active{color:#344500}
+:root[data-theme="dark"] .auth-footer-note,
+:root[data-theme="dark"] .sso-hint,
+:root[data-theme="dark"] .sso-divider,
+:root[data-theme="dark"] .provider-coming{color:#c3c9c7}
+:root[data-theme="dark"] .auth-visual-bottom .eyebrow{color:#e8ff83}
+:root[data-theme="dark"] .mobilebar button.active{color:#e2ff56}
+:root:not([data-theme="dark"]) input::placeholder,
+:root:not([data-theme="dark"]) textarea::placeholder{color:#586367;opacity:1}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder{color:#b0b8bc;opacity:1}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #6e8900;outline-offset:3px}
+:root[data-theme="dark"] button:focus-visible,
+:root[data-theme="dark"] a:focus-visible,
+:root[data-theme="dark"] input:focus-visible,
+:root[data-theme="dark"] select:focus-visible,
+:root[data-theme="dark"] textarea:focus-visible,
+:root[data-theme="dark"] summary:focus-visible{outline-color:#dfff00}
+@media(max-width:680px){
+ .mobilebar button{font-size:12px;min-height:48px}
+ .auth-intro .eyebrow,.auth-footer-note,.sso-divider,.sso-hint{font-size:12px}
+ .field input,.field select,.field textarea{font-size:16px}
+}
