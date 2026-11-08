@@ -201,6 +201,33 @@ function layout(body,title){
  const mobile=tabs.filter(([id])=>visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}"><span>${navIcon(id)}</span><span>${t(id)}</span></button>`).join('')+`<button data-action="more" class="${showMore?'active':''}"><span>⋯</span><span>${lang==='uk'?'Ще':'More'}</span></button>`;
  const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="subtitle">NIKCAR · CLOUD CONSOLE 0.12</div><h1>${title}</h1>${body}</main></div><nav class="mobilebar">${mobile}</nav>${moreMenu}</div>`;
 }
+// Fleet Intelligence v1: owner-only financial estimates from already loaded records.
+// Incomplete expenses or unconfirmed payments must never be labelled audited profit.
+function fleetIntelligencePage(){
+ if(!isOwner())return '';
+ const costs=records.expense_entries.filter(x=>Number.isFinite(Number(x.amount))&&Number(x.amount)>=0);
+ const paid=records.payment_claims.filter(x=>x.status==='confirmed'&&Number.isFinite(Number(x.amount))&&Number(x.amount)>=0);
+ const byCar=new Map(records.cars.map(c=>[c.id,{car:c,cost:0,revenue:0,items:[]}]));
+ for(const x of costs){const row=byCar.get(x.car_id);if(row){row.cost+=Number(x.amount);row.items.push(x);}}
+ for(const x of paid){
+  const rent=records.rental_requests.find(r=>r.id===x.rental_request_id);
+  const row=byCar.get(rent?.car_id);if(row)row.revenue+=Number(x.amount);
+ }
+ const rows=[...byCar.values()].map(x=>`<div class="line"><div><b>${e(x.car.model)} · ${e(x.car.plate)}</b><div class="small">Підтверджені платежі: ${money(x.revenue)} · Обліковані витрати: ${money(x.cost)}</div><div class="small">Різниця за доступними записами: <b>${money(x.revenue-x.cost)}</b></div></div></div>`).join('');
+ const groups=new Map();
+ for(const x of costs){const k=x.car_id||'fleet';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(Number(x.amount));}
+ const alerts=[];
+ for(const x of costs){
+  const sample=groups.get(x.car_id||'fleet')||[];
+  const peers=sample.filter(v=>v!==Number(x.amount)).sort((a,b)=>a-b);
+  if(peers.length<3)continue;
+  const median=peers[Math.floor(peers.length/2)];
+  if(median>0&&Number(x.amount)>=median*3&&Number(x.amount)-median>=1000)
+   alerts.push(x);
+ }
+ const flagged=alerts.slice(0,8).map(x=>`<div class="line"><div><b>${money(x.amount)}</b> · ${e(x.category||'Витрата')}<div class="small">${e(carName(x.car_id))} · ${d(x.created_at)}</div></div></div>`).join('');
+ return `<section class="card" aria-label="NikCar Fleet Intelligence"><h2>📊 NikCar Fleet Intelligence</h2><p class="small">Попередня аналітика за завантаженими записами (до 250 платежів і 200 витрат). Це не бухгалтерський прибуток: не враховано непроведені витрати, податки та амортизацію.</p><h3>Доходи та витрати за авто</h3>${rows||'<p class="small">Додайте автомобіль для аналітики.</p>'}<h3>Незвичайні витрати</h3><p class="small">Сигнал, якщо сума в 3+ рази перевищує типову за тим самим авто (мінімум 3 інші записи) та різниця становить від 1000 грн. Це не доказ помилки.</p>${flagged||'<p class="small">За наявними записами підозрілих сум не виявлено або даних замало.</p>'}</section>`;
+}
 function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const total=records.cars.length, drivers=records.profiles.filter(x=>x.role==='driver');
  const pending=records.rental_requests.filter(x=>x.status==='pending');
@@ -211,7 +238,7 @@ function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('
  const sosRows=urgent.slice(0,5).map(x=>`<div class="line"><div><b>${e(t(x.category))}</b><div class="small">${e(name(x.requester_id))} · ${e(x.location_text||'')}</div></div>${status(x.status)}</div>`).join('');
  const hi=lang==='uk'?'Вітаємо в NikCar':'Welcome to NikCar';
  const summary=lang==='uk'?'Управляйте автопарком, перевіряйте заявки та платежі в одному місці.':'Manage your fleet, requests and payments in one workspace.';
- return `<div class="dashboard-hero"><div><span class="hero-overline">NIKCAR · FLEET CONTROL 0.9</span><h2>${hi}</h2><p>${summary}</p></div><img src="./fleet-hero.svg" width="280" height="190" alt="${lang==='uk'?'Векторна ілюстрація NikCar':'NikCar vector illustration'}"></div><div class="metric-grid">${cards}</div><div class="notice-line"><span class="notice-dot"></span><b>${t('fuelOff')}</b><span class="small">${t('fuelNotice')}</span></div><div class="two-panel"><div class="card"><div class="panel-heading"><h2>${t('countPending')}</h2><button class="btn secondary tiny" data-action="nav" data-page="requests">${t('reload')}</button></div>${requestRows||`<p>${t('noRequests')}</p>`}</div><div class="card"><h2>${t('sos')}</h2>${sosRows||`<p>${t('noSos')}</p>`}</div></div><div class="two-panel"><div class="card"><h2>${t('newsFeed')}</h2>${records.announcements.slice(0,2).map(a=>`<div class="line"><div><b>${e(a['title_'+lang])}</b><div class="small">${e(a['body_'+lang]).slice(0,165)}</div></div></div>`).join('')||t('emptyNews')}<button class="btn secondary tiny" data-action="nav" data-page="announcements">${t('announcements')}</button></div><div class="card"><h2>${t('releaseSoon')}</h2><p>${t('summaryInfo')}</p><div class="tag warn">${t('onlyPilot')}</div></div></div>`;
+ return `<div class="dashboard-hero"><div><span class="hero-overline">NIKCAR · FLEET CONTROL 0.9</span><h2>${hi}</h2><p>${summary}</p></div><img src="./fleet-hero.svg" width="280" height="190" alt="${lang==='uk'?'Векторна ілюстрація NikCar':'NikCar vector illustration'}"></div><div class="metric-grid">${cards}</div>${fleetIntelligencePage()}<div class="notice-line"><span class="notice-dot"></span><b>${t('fuelOff')}</b><span class="small">${t('fuelNotice')}</span></div><div class="two-panel"><div class="card"><div class="panel-heading"><h2>${t('countPending')}</h2><button class="btn secondary tiny" data-action="nav" data-page="requests">${t('reload')}</button></div>${requestRows||`<p>${t('noRequests')}</p>`}</div><div class="card"><h2>${t('sos')}</h2>${sosRows||`<p>${t('noSos')}</p>`}</div></div><div class="two-panel"><div class="card"><h2>${t('newsFeed')}</h2>${records.announcements.slice(0,2).map(a=>`<div class="line"><div><b>${e(a['title_'+lang])}</b><div class="small">${e(a['body_'+lang]).slice(0,165)}</div></div></div>`).join('')||t('emptyNews')}<button class="btn secondary tiny" data-action="nav" data-page="announcements">${t('announcements')}</button></div><div class="card"><h2>${t('releaseSoon')}</h2><p>${t('summaryInfo')}</p><div class="tag warn">${t('onlyPilot')}</div></div></div>`;
 }
 function driversPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const people=records.profiles.filter(x=>x.role==='driver').slice().sort((a,b)=>a.full_name.localeCompare(b.full_name,'uk'));
