@@ -320,12 +320,12 @@ async function readTechPassport(file){
 let newCarDraft=null;
 function captureNewCarDraft(){
  const form=document.getElementById('new-car');
- if(!form||!user||!isOwner())return;
+ if(!form?.elements?.namedItem||!user||!isOwner())return;
  newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
 }
 function restoreNewCarDraft(){
  const form=document.getElementById('new-car');
- if(!form||!newCarDraft||newCarDraft.userId!==user?.id)return;
+ if(!form?.elements?.namedItem||!newCarDraft||newCarDraft.userId!==user?.id)return;
  for(const [name,value] of Object.entries(newCarDraft.values)){
   const input=form.elements.namedItem(name);
   if(input)input.value=value;
