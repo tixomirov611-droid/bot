@@ -343,3 +343,104 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
  .top .right .lang{min-width:53px}
 }
 @media(prefers-reduced-motion:reduce){.theme-toggle{transition:none}}
+
+
+/* NikCar Service acid-lime identity. Keep white and dark modes accessible. */
+:root{
+ --accent:#b7d800;--accent-dark:#526600;--bg:#f7f8f4;--surface:#fff;
+ --line:#e1e4d8;--ink:#15171c;--muted:#626872;--soft:#f3f9d8;
+ --brand-lime:#dfff00;--brand-black:#101116;--brand-white:#fff;
+}
+:root[data-theme="dark"]{
+ --accent:#dfff00;--accent-dark:#e9ff64;--bg:#101116;--surface:#1a1c23;
+ --line:#343841;--ink:#f7f8fb;--muted:#aeb4be;--soft:#2d3217;
+ --brand-lime:#dfff00;--brand-black:#101116;--brand-white:#fff;
+ color-scheme:dark;
+}
+.brand{display:flex;align-items:center;gap:10px;letter-spacing:-.8px;color:var(--ink)}
+.brand .brand-mark{border-radius:10px;object-fit:cover;flex:none;background:#101116}
+.brand em{color:#879c00}
+:root[data-theme="dark"] .brand em{color:#dfff00}
+.brand small{letter-spacing:2.1px}
+.sidebar{border-right:1px solid var(--line)}
+.top{background:var(--surface)}
+.subtitle,.eyebrow{color:#637600}
+:root[data-theme="dark"] .subtitle,:root[data-theme="dark"] .eyebrow{color:#dfff00}
+.btn:not(.secondary):not(.danger){background:#dfff00;border-color:#dfff00;color:#101116;font-weight:800}
+.btn:not(.secondary):not(.danger):hover:not(:disabled){background:#cbe800;border-color:#cbe800;color:#101116}
+.btn.secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.secondary:hover:not(:disabled){background:var(--soft);color:var(--ink);border-color:#a5bf00}
+.btn.danger{background:#b84048;border-color:#b84048;color:#fff}
+.btn:focus-visible,.theme-toggle:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #a4b900;outline-offset:2px}
+.nav button{color:var(--muted)}
+.nav button.active{background:var(--soft);color:var(--ink);box-shadow:inset 3px 0 #b2ce00}
+.nav button:hover:not(.active){background:var(--soft);color:var(--ink)}
+.tag{background:#f1f8cb;color:#425400}
+.tag.warn{background:#fff2e3;color:#835717}
+.tag.danger{background:#ffecec;color:#a93636}
+.banner:not(.warning){background:#f4f9db;color:#405100;border-color:#e3edb5}
+.car-icon,.metric-icon{background:var(--soft);color:#536900}
+.notice-line{background:#f4f9df;border-color:#e2edb5;color:#435400}
+.auth-visual,.dashboard-hero{background:linear-gradient(120deg,#111319,#252832);color:#fff;border-color:#33363c}
+.auth-visual h1,.auth-visual h2,.dashboard-hero h2{color:#fff}
+.auth-visual p,.dashboard-hero p{color:#d4d7dd}
+.auth-visual .pilot-chip,.hero-overline{color:#dfff00}
+.auth-visual-graphic img,.dashboard-hero img{filter:grayscale(1) brightness(1.3) contrast(1.05)}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+:root[data-theme="dark"] .top{background:#191b21f2}
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .mobilebar,
+:root[data-theme="dark"] .more-sheet,
+:root[data-theme="dark"] .auth-box,
+:root[data-theme="dark"] .v09-auth .auth-box,
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .empty-state{background:#1a1c23;color:var(--ink);border-color:var(--line)}
+:root[data-theme="dark"] .metric{background:linear-gradient(145deg,#1b1e24,#25282e);border-color:var(--line)}
+:root[data-theme="dark"] .nav button.active{background:#30351d;color:#e8ff69;box-shadow:inset 3px 0 #dfff00}
+:root[data-theme="dark"] .nav button:hover:not(.active){background:#2b2e31;color:#fff}
+:root[data-theme="dark"] .btn:not(.secondary):not(.danger){background:#dfff00;border-color:#dfff00;color:#101116}
+:root[data-theme="dark"] .btn:not(.secondary):not(.danger):hover:not(:disabled){background:#cce800;border-color:#cce800;color:#101116}
+:root[data-theme="dark"] .btn.secondary{background:#2b2d33;border-color:#4a4e54;color:#f3f5f6}
+:root[data-theme="dark"] .btn.secondary:hover:not(:disabled){background:#383c29;border-color:#dfff00;color:#f2ffc4}
+:root[data-theme="dark"] .btn.danger{background:#a83d47;border-color:#a83d47;color:#fff}
+:root[data-theme="dark"] .tag{background:#343b19;border-color:#59652a;color:#e5ff86}
+:root[data-theme="dark"] .tag.warn{background:#473923;border-color:#7e623c;color:#ffdc96}
+:root[data-theme="dark"] .tag.danger{background:#482b35;border-color:#844251;color:#ffbec4}
+:root[data-theme="dark"] .banner:not(.warning){background:#2b331b;border-color:#505f29;color:#e8ff9d}
+:root[data-theme="dark"] .banner.warning{background:#423424;color:#f5d8a2;border-color:#765939}
+:root[data-theme="dark"] .notice-line{background:linear-gradient(110deg,#292f1d,#24262b);border-color:#464d2d;color:#e7f7bd}
+:root[data-theme="dark"] .notice-dot{box-shadow:0 0 0 5px #dfff0030;background:#dfff00}
+:root[data-theme="dark"] .metric-icon,:root[data-theme="dark"] .car-icon{background:#333a1e;color:#dfff00}
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .driver-status-select,
+:root[data-theme="dark"] .lang{background:#12141a;color:#fff;border-color:#494d56}
+:root[data-theme="dark"] .field input:focus,
+:root[data-theme="dark"] .field textarea:focus,
+:root[data-theme="dark"] .field select:focus{border-color:#dfff00;box-shadow:0 0 0 4px #dfff0029}
+:root[data-theme="dark"] .bubble{background:#2b2e35;color:#fff}
+:root[data-theme="dark"] .bubble.mine{background:#343c1d;color:#fff}
+:root[data-theme="dark"] .car-art{background:linear-gradient(120deg,#25272c,#323520);border-color:var(--line)}
+:root[data-theme="dark"] body:has(.v09-auth){background:radial-gradient(circle at top left,#2b3215 0,transparent 46%),#101116}
+:root[data-theme="dark"] .v09-auth .auth-box{background:#1a1c23}
+:root[data-theme="dark"] .v09-auth .auth-tabs{background:#111319}
+:root[data-theme="dark"] .auth-tab.active{background:#343b1b;color:#eaff92}
+:root[data-theme="dark"] .auth-method.active{background:#343c1d;color:#eaff92}
+:root[data-theme="dark"] .auth-method:hover:not(.active),
+:root[data-theme="dark"] button.sso-option:hover{background:#30371e;border-color:#879f27}
+:root[data-theme="dark"] .auth-info{background:#292e1c;border-color:#4a522b;color:#e1e9ce}
+:root[data-theme="dark"] .auth-info summary,
+:root[data-theme="dark"] .auth-helper .btn,
+:root[data-theme="dark"] .v09-auth .auth-compact-link .auth-small-link,
+:root[data-theme="dark"] .v09-auth .auth-compact-link .auth-small-link.active{color:#e1ff72}
+:root[data-theme="dark"] .auth-info p{color:#c9d0bc}
+:root[data-theme="dark"] .sso-option,
+:root[data-theme="dark"] .auth-method,
+:root[data-theme="dark"] .sso-mark{background:#24262e;border-color:#3c4048;color:#fff}
+:root[data-theme="dark"] .theme-toggle{background:#292c31;border-color:#4c5058;color:#dfff00}
+:root[data-theme="dark"] .theme-toggle:hover{background:#373b28;border-color:#dfff00}
+:root[data-theme="dark"] .more-sheet button:not(.btn){background:#2c2e35;color:#fff}
+:root[data-theme="dark"] .more-sheet button:not(.btn):hover{background:#3a4028}
+:root[data-theme="dark"] .mobilebar button.active{color:#dfff00}
+:root[data-theme="dark"] #toast{background:#30331d;color:#f5ffdb}

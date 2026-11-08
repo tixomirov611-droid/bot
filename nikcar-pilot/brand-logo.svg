@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" role="img" aria-label="NikCar Service">
+<rect width="900" height="470" rx="36" fill="#101116"/>
+<g transform="translate(220 20) scale(1.7)">
+<path d="M39 166 88 75Q94 64 110 64H219Q229 64 222 76L177 170Q173 179 159 179H47Q33 179 39 166Z" fill="none" stroke="#DFFF00" stroke-width="14" stroke-linejoin="round"/>
+<path d="M71 151 104 90H123L146 126 163 91H200L188 113H171L152 151H135L112 115 94 151Z" fill="#FFFFFF"/>
+<path d="M169 137H195L186 151H160Z" fill="#FFFFFF"/>
+</g>
+<g font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" letter-spacing="-9" font-size="122">
+<text x="103" y="352" fill="#FFFFFF">Nik</text><text x="327" y="352" fill="#DFFF00">Car</text>
+</g>
+<text x="120" y="411" font-family="Arial,Helvetica,sans-serif" font-size="39" font-weight="800" font-style="italic" letter-spacing="18" fill="#FFFFFF">SERVICE</text>
+<path d="M610 390H792L775 411H600Z" fill="#DFFF00"/>
+</svg>

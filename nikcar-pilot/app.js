@@ -41,6 +41,7 @@ const TRANSLATIONS={
 let selectedCar=null, docBusy=false, lastAuthEmail='';
 let lang=(localStorage.getItem('nikcar-lang')==='en'?'en':'uk'),page='cars',mode='signin',authMethod='password',authNotice=initialLinkError?initialLinkErrorMessage():'',recoveryMode=!initialLinkError&&(initialRecoveryLink||readRecoveryPending());
 const themeStorageKey='nikcar-theme';
+// NikCar Service visual identity: acid-lime, white and black; existing auth/finance flows unchanged.
 let theme=(()=>{try{return localStorage.getItem(themeStorageKey)==='dark'?'dark':'light';}catch(_){return 'light';}})();
 document.documentElement.dataset.theme=theme;
 function themeLabel(){return theme==='dark'?(lang==='uk'?'Світла тема':'Light theme'):(lang==='uk'?'Темна тема':'Dark theme');}
@@ -55,7 +56,7 @@ function applyTheme(next){
  theme=next==='dark'?'dark':'light';
  document.documentElement.dataset.theme=theme;
  try{localStorage.setItem(themeStorageKey,theme);}catch(_){}
- const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'#10191d':'#0A8B7A');
+ const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',theme==='dark'?'#101116':'#FFFFFF');
  for(const button of document.querySelectorAll('[data-action="toggle-theme"]')){
   button.innerHTML=themeIcon();button.setAttribute('aria-pressed',String(theme==='dark'));
   button.setAttribute('aria-label',themeLabel());button.setAttribute('title',themeLabel());
@@ -134,7 +135,7 @@ function carName(id){const v=records.cars.find(x=>x.id===id);return v?`${v.model
 function isOwner(){return me?.role==='owner'&&me.access==='active'}
 function activeMember(){return isOwner()||(me?.role==='driver'&&me.access==='active')}
 function canApply(){return me?.role==='driver'&&['candidate','active'].includes(me.access)}
-function configuredPage(){return `<div class="auth-layout"><div class="auth-box"><div class="row"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>FLEET CONTROL</small></span></div>${headerControls()}</div><h1>${t('notConnected')}</h1><p>${t('setup')}</p><div class="banner warning">${t('onlyPilot')}</div></div></div>`}
+function configuredPage(){return `<div class="auth-layout"><div class="auth-box"><div class="row"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div>${headerControls()}</div><h1>${t('notConnected')}</h1><p>${t('setup')}</p><div class="banner warning">${t('onlyPilot')}</div></div></div>`}
 function langControl(){return `<select class="lang" data-action="language" aria-label="${t('lang')}"><option value="uk" ${lang==='uk'?'selected':''}>UA</option><option value="en" ${lang==='en'?'selected':''}>EN</option></select>`}
 function navIcon(id){
  const paths={
@@ -178,7 +179,7 @@ function authPage(){
     <div class="auth-visual-bottom"><span class="eyebrow">${lang==='uk'?'РОЗУМНЕ УПРАВЛІННЯ':'SMART FLEET CONTROL'}</span><h2>${visualTitle}</h2><p>${visualText}</p></div>
   </aside>
   <section class="auth-box">
-    <div class="auth-header"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>FLEET CONTROL</small></span></div>${headerControls()}</div>
+    <div class="auth-header"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div>${headerControls()}</div>
     <div class="auth-intro"><span class="eyebrow">${lang==='uk'?'КАБІНЕТ NIKCAR':'NIKCAR PORTAL'}</span><h1>${head}</h1><p>${authSubtitle}</p></div>
     ${authNotice?`<div class="banner${authNoticeIsError?' warning':''}" role="${authNoticeIsError?'alert':'status'}">${e(authNotice)}</div>`:''}
     ${!recovering&&mode!=='reset'?`<div class="auth-tabs" role="group" aria-label="${lang==='uk'?'Вхід або реєстрація':'Sign in or register'}"><button type="button" class="auth-tab ${mode==='signin'?'active':''}" data-action="auth-mode" data-value="signin">${t('signin')}</button><button type="button" class="auth-tab ${mode==='signup'?'active':''}" data-action="auth-mode" data-value="signup">${t('signup')}</button></div>`:''}
@@ -197,7 +198,7 @@ function layout(body,title){
  const nav=tabs.map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}"><span class="nav-symbol">${navIcon(id)}</span> ${t(id)}</button>`).join('');
  const visibleMobile=(isOwner()?['dashboard','cars','requests','payments','repairs']:['cars','announcements','requests','payments','sos']);
  const mobile=tabs.filter(([id])=>visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}"><span>${navIcon(id)}</span><span>${t(id)}</span></button>`).join('')+`<button data-action="more" class="${showMore?'active':''}"><span>⋯</span><span>${lang==='uk'?'Ще':'More'}</span></button>`;
- const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>FLEET CONTROL</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>FLEET CONTROL</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="subtitle">NIKCAR · CLOUD CONSOLE 0.12</div><h1>${title}</h1>${body}</main></div><nav class="mobilebar">${mobile}</nav>${moreMenu}</div>`;
+ const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="subtitle">NIKCAR · CLOUD CONSOLE 0.12</div><h1>${title}</h1>${body}</main></div><nav class="mobilebar">${mobile}</nav>${moreMenu}</div>`;
 }
 function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const total=records.cars.length, drivers=records.profiles.filter(x=>x.role==='driver');
