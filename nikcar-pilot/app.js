@@ -285,7 +285,23 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
  return `<div class="banner warning">${t('pendingFeature')}</div><div class="two-panel"><div>${newform}</div><div class="card"><h2>${t('repairs')}</h2>${all.map(j=>`<div class="line"><div><b>${e(j.title)}</b><div class="small">${e(carName(j.car_id))} · ${money(repairTotal(j))}</div></div><button class="btn secondary tiny" data-action="select-repair" data-id="${e(j.id)}">${status(j.status==='draft'?'repairDraft':'repairPosted')}</button></div>`).join('')||`<p>${t('repairNoData')}</p>`}</div></div>${detail}`;
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
-function render(){document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
+// Keep the owner's new-car draft while navigating between tabs or refreshing data.
+// In-memory only: no personal data, credentials or unfinished forms in browser storage.
+let newCarDraft=null;
+function captureNewCarDraft(){
+ const form=document.getElementById('new-car');
+ if(!form||!user||!isOwner())return;
+ newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
+}
+function restoreNewCarDraft(){
+ const form=document.getElementById('new-car');
+ if(!form||!newCarDraft||newCarDraft.userId!==user?.id)return;
+ for(const [name,value] of Object.entries(newCarDraft.values)){
+  const input=form.elements.namedItem(name);
+  if(input)input.value=value;
+ }
+}
+function render(){captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);restoreNewCarDraft();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
 async function load({preserveDraft=false}={}){
  if(!sb||!user){me=null;records=emptyRecords();render();return;}
  const expectedUserId=user.id,version=++loadVersion;
@@ -470,7 +486,7 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   if(!isOwner())return;const carId=String(f.get('id')||'');
   const saved=await mutation(sb.from('cars').update({plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}).eq('id',carId));if(saved){carEditor=null;render();}return;
  }
- if(form.id==='new-car'){await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));return;}
+ if(form.id==='new-car'){const saved=await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));if(saved){newCarDraft=null;render();}return;}
  if(form.id==='chat-send'){await mutation(sb.from('chat_messages').insert({sender_id:me.id,body:String(f.get('text')).trim()}));return;}
  if(form.id==='sos-create'){await mutation(sb.from('sos_requests').insert({requester_id:me.id,category:f.get('category'),note:String(f.get('note')||'').trim(),location_text:String(f.get('location')||'').trim()}));return;}
  if(form.id==='profile-update'){await mutation(sb.from('profiles').update({full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()}).eq('id',me.id));return;}
