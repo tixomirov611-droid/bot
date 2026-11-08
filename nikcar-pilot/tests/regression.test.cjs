@@ -12,12 +12,13 @@ assert.ok(startup > 0, 'Cannot find startup IIFE boundary');
 const logic = source.slice(0, startup);
 // The real startup imports a hosted SDK and accesses production services.
 // Never execute that startup in these offline tests.
-function harness() {
+function harness(initialStorage={}) {
   const events = new Map();
   const root = {innerHTML: 'INITIAL'};
   const toast = {textContent: '', classList: {add(){}, remove(){}}};
   const netStatus={hidden:true,textContent:''};
-  const storageData = {};
+  const storageData = {...initialStorage};
+  const themeButtons=[];
   const storage = {
     getItem: k => storageData[k] ?? null,
     setItem: (k,v) => {storageData[k] = String(v);},
@@ -26,7 +27,7 @@ function harness() {
   let dirty = false, online = true;
   const navigatorMock={get onLine(){return online;}};
   const doc = {
-    documentElement: {lang: 'uk'}, visibilityState: 'visible',
+    documentElement: {lang: 'uk',dataset:{}}, visibilityState: 'visible',
     getElementById: k => k === 'root' ? root : k === 'network-status' ? netStatus : toast,
     addEventListener(k, fn) {
       const handlers = events.get(k) || [];
@@ -34,7 +35,7 @@ function harness() {
       events.set(k, handlers);
     },
     querySelector: selector => selector.startsWith('form[') && dirty ? {dataset: {dirty:'1'}} : null,
-    querySelectorAll: () => []
+    querySelectorAll: selector => selector==='[data-action="toggle-theme"]' ? themeButtons : []
   };
   const win = {
     NIKCAR_SUPABASE: {url: 'https://mock.supabase.co', publishableKey: 'mock', redirectUrl: 'https://nikcar-cloud-pilot.onrender.com/'},
@@ -44,12 +45,12 @@ function harness() {
   const factory = new Function('document','window','location','localStorage','sessionStorage','navigator','FormData','setTimeout','clearTimeout','crypto',
     logic + '\nreturn {setUser:x=>user=x,setMe:x=>me=x,setClient:x=>sb=x,setRecords:x=>records=x,' +
     'get:()=>({user,me,records,page,loadVersion,carEditor}),load,mutation,click:clickAction,docs:documentsPage,' +
-    'authErrorMessage,clear:clearAccountState,setRecovery:x=>setRecoveryMode(x),getRecovery:()=>({active:recoveryMode,notice:authNotice,isError:authNoticeIsError})};');
+    'authErrorMessage,clear:clearAccountState,setRecovery:x=>setRecoveryMode(x),getRecovery:()=>({active:recoveryMode,notice:authNotice,isError:authNoticeIsError}),getTheme:()=>theme,themeControl,themeLogin:authPage,themeHeader:()=>layout("", "Test")};');
   const app = factory(doc, win, {hash:'',search:''},storage,storage,navigatorMock,FormDataMock,()=>0,()=>{},{randomUUID:()=> 'mock-file'});
   async function fire(k, event) {
     for(const fn of events.get(k) || []) await fn(event);
   }
-  return {app,root,doc,events,fire,setDirty:x=>{dirty=x;},setOnline:x=>{online=x;},netStatus,toast};
+  return {app,root,doc,events,fire,setDirty:x=>{dirty=x;},setOnline:x=>{online=x;},addThemeButton:b=>themeButtons.push(b),getSavedTheme:()=>storageData['nikcar-theme'],netStatus,toast};
 }
 const owner = {id:'o1',role:'owner',access:'active',full_name:'Owner'};
 const driver = {id:'d1',role:'driver',access:'candidate',full_name:'Driver'};
@@ -353,4 +354,63 @@ test('password update error does not attempt logout or pretend password was chan
  assert.equal(h.app.getRecovery().active,true);
  assert.equal(h.app.getRecovery().isError,true);
  assert.doesNotMatch(h.app.getRecovery().notice,/Пароль змінено/);
+});
+
+test('light theme is the default with moon icon on the login screen', () => {
+ const h=harness();
+ assert.equal(h.app.getTheme(),'light');
+ assert.equal(h.doc.documentElement.dataset.theme,'light');
+ assert.match(h.app.themeControl(),/aria-pressed="false"/);
+ assert.match(h.app.themeControl(),/aria-label="Темна тема"/);
+ assert.match(h.app.themeControl(),/M20\.8 14\.1/);
+ assert.match(h.app.themeLogin(),/data-action="toggle-theme"/);
+});
+
+test('sun and moon switcher updates theme without rerendering or losing typed forms', async () => {
+ const h=harness();h.setDirty(true);
+ const button={innerHTML:'',attrs:{},setAttribute(k,v){this.attrs[k]=v;}};
+ h.addThemeButton(button);
+ const previous=h.root.innerHTML;
+ await h.app.click({dataset:{action:'toggle-theme'}});
+ assert.equal(h.app.getTheme(),'dark');
+ assert.equal(h.getSavedTheme(),'dark');
+ assert.equal(h.doc.documentElement.dataset.theme,'dark');
+ assert.equal(button.attrs['aria-pressed'],'true');
+ assert.equal(button.attrs['aria-label'],'Світла тема');
+ assert.match(button.innerHTML,/circle cx="12"/);
+ assert.equal(h.root.innerHTML,previous);
+ await h.app.click({dataset:{action:'toggle-theme'}});
+ assert.equal(h.app.getTheme(),'light');
+ assert.equal(h.getSavedTheme(),'light');
+ assert.equal(button.attrs['aria-pressed'],'false');
+ assert.match(button.innerHTML,/M20\.8 14\.1/);
+ assert.equal(h.root.innerHTML,previous);
+});
+
+test('saved dark theme persists on app reload and is accessible in English', () => {
+ const h=harness({'nikcar-theme':'dark','nikcar-lang':'en'});
+ assert.equal(h.app.getTheme(),'dark');
+ assert.equal(h.doc.documentElement.dataset.theme,'dark');
+ assert.match(h.app.themeLogin(),/aria-label="Light theme"/);
+ assert.match(h.app.themeLogin(),/aria-pressed="true"/);
+ h.app.setUser({id:'theme-user',email:'test@example.com'});h.app.setMe(owner);
+ assert.match(h.app.themeHeader(),/data-action="toggle-theme"/);
+});
+
+test('invalid saved theme does not break interface and falls back to light', () => {
+ const h=harness({'nikcar-theme':'malformed'});
+ assert.equal(h.app.getTheme(),'light');
+ assert.match(h.app.themeLogin(),/aria-pressed="false"/);
+});
+
+test('dark palette covers navigation, account forms, banners and mobile layout', () => {
+ const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+ for(const selector of ['.sidebar','.mobilebar','.v09-auth .auth-box','.field input','.card','.tag','.banner.warning','.more-sheet']) {
+  assert.ok(css.includes(selector),selector+' missing');
+ }
+ assert.match(css,/:root\[data-theme="dark"\]/);
+ assert.match(css,/color-scheme:dark/);
+ assert.match(html,/localStorage\.getItem\('nikcar-theme'\)/);
+ assert.ok(html.indexOf("localStorage.getItem('nikcar-theme')") < html.indexOf('rel="stylesheet"'),'saved theme must load before CSS');
 });

@@ -226,3 +226,120 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
 /* Offline connectivity notice; kept outside the JS-rendered application root. */
 .network-status{position:sticky;top:0;z-index:1100;width:100%;padding:12px 18px;text-align:center;background:#fff0cc;color:#664500;border-bottom:1px solid #d5a949;font-weight:700;line-height:1.5}
 .network-status[hidden]{display:none}
+
+
+/* NikCar Fleet 0.13.9 — light/dark theme. Applied after all legacy component rules. */
+.header-controls{display:inline-flex;align-items:center;gap:8px;flex-shrink:0}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;min-width:40px;padding:0;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;box-shadow:none;transition:background .18s,border-color .18s,color .18s}
+.theme-toggle:hover{background:var(--soft);border-color:var(--accent)}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.theme-toggle svg{display:block;flex:none}
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --accent:#149e8d;
+ --accent-dark:#80e2d1;
+ --bg:#0d151a;
+ --surface:#19262c;
+ --line:#33474c;
+ --ink:#e8f1f2;
+ --muted:#a6bcc0;
+ --soft:#234043;
+ --bad:#ff8888;
+ --gold:#ecca87;
+}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+:root[data-theme="dark"] h1,
+:root[data-theme="dark"] h2,
+:root[data-theme="dark"] h3{color:var(--ink)}
+:root[data-theme="dark"] a{color:var(--accent-dark)}
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .mobilebar,
+:root[data-theme="dark"] .more-sheet,
+:root[data-theme="dark"] .auth-box,
+:root[data-theme="dark"] .v09-auth .auth-box{background:var(--surface);border-color:var(--line);color:var(--ink);box-shadow:0 8px 35px #0004}
+:root[data-theme="dark"] .top{background:#18252bef;border-color:var(--line)}
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .metric,
+:root[data-theme="dark"] .empty-state{background:var(--surface);border-color:var(--line);box-shadow:0 7px 26px #0003;color:var(--ink)}
+:root[data-theme="dark"] .metric{background:linear-gradient(155deg,#19262c,#202f34)}
+:root[data-theme="dark"] .metric-value{color:var(--ink)}
+:root[data-theme="dark"] .metric-icon,
+:root[data-theme="dark"] .car-icon{background:var(--soft);color:var(--accent-dark)}
+:root[data-theme="dark"] .notice-line{background:linear-gradient(110deg,#1b3633,#19282d);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .notice-dot{box-shadow:0 0 0 5px #24776355}
+:root[data-theme="dark"] .nav button{color:var(--muted)}
+:root[data-theme="dark"] .nav button:hover:not(.active){background:#243b40;color:var(--ink)}
+:root[data-theme="dark"] .nav button.active{background:linear-gradient(90deg,#204843,#21353a);color:var(--accent-dark);box-shadow:inset 3px 0 var(--accent)}
+:root[data-theme="dark"] .more-sheet button:not(.btn){background:#26363c;color:var(--ink)}
+:root[data-theme="dark"] .more-sheet button:not(.btn):hover{background:#305047}
+:root[data-theme="dark"] .mobilebar button{color:var(--muted)}
+:root[data-theme="dark"] .mobilebar button.active{color:var(--accent-dark)}
+:root[data-theme="dark"] .btn{background:#087f70;border-color:#087f70;color:#fff}
+:root[data-theme="dark"] .btn:hover:not(:disabled){background:#0a9482;border-color:#0a9482;color:#fff}
+:root[data-theme="dark"] .btn.secondary{background:#26363c;border-color:#456166;color:var(--accent-dark)}
+:root[data-theme="dark"] .btn.secondary:hover:not(:disabled){background:#2d4d48;border-color:#6bc8b7;color:#d4fff4}
+:root[data-theme="dark"] .btn.danger{background:#a83d47;border-color:#a83d47;color:#fff}
+:root[data-theme="dark"] .tag{background:#25443d;border-color:#386959;color:#a7f2d6}
+:root[data-theme="dark"] .tag.warn{background:#483925;border-color:#836342;color:#f8d79c}
+:root[data-theme="dark"] .tag.danger{background:#482b35;border-color:#844251;color:#ffbec4}
+:root[data-theme="dark"] .banner{background:#1c3937;color:#b7f4e0;border-color:#32685e}
+:root[data-theme="dark"] .banner.warning{background:#423424;color:#f5d8a2;border-color:#765939}
+:root[data-theme="dark"] .field{color:#c5d7d9}
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .driver-status-select,
+:root[data-theme="dark"] .lang{background:#111d23;border:1px solid #40565c;color:var(--ink);color-scheme:dark}
+:root[data-theme="dark"] .field input::placeholder,
+:root[data-theme="dark"] .field textarea::placeholder{color:#93a9af}
+:root[data-theme="dark"] .field input:hover,
+:root[data-theme="dark"] .field textarea:hover,
+:root[data-theme="dark"] .field select:hover{border-color:#668981}
+:root[data-theme="dark"] .field input:focus,
+:root[data-theme="dark"] .field textarea:focus,
+:root[data-theme="dark"] .field select:focus{border-color:#51c4ae;box-shadow:0 0 0 4px #2ba89235}
+:root[data-theme="dark"] .line,
+:root[data-theme="dark"] .driver-card{border-color:var(--line)}
+:root[data-theme="dark"] .news-card .notice-copy{color:#c5d6d6}
+:root[data-theme="dark"] .bubble{background:#293b41;color:var(--ink)}
+:root[data-theme="dark"] .bubble.mine{background:#245248;color:var(--ink)}
+:root[data-theme="dark"] .bubble small{color:#adc4c5}
+:root[data-theme="dark"] .car-art{background:linear-gradient(120deg,#1b3733,#273e42);border-color:var(--line)}
+:root[data-theme="dark"] body:has(.v09-auth){background:radial-gradient(circle at top left,#17342f 0,transparent 46%),#0d151a}
+:root[data-theme="dark"] .v09-auth .auth-box{background:#19262c}
+:root[data-theme="dark"] .v09-auth .auth-tabs{background:#101c21}
+:root[data-theme="dark"] .auth-tab{color:var(--muted)}
+:root[data-theme="dark"] .auth-tab.active{background:#294943;color:#bff4e6;box-shadow:0 2px 10px #0003}
+:root[data-theme="dark"] .auth-tab:hover:not(.active){background:#253b40;color:var(--ink)}
+:root[data-theme="dark"] .auth-method,
+:root[data-theme="dark"] .sso-option,
+:root[data-theme="dark"] .sso-mark{background:#1e3036;border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .auth-method.active{background:#265047;color:var(--accent-dark)}
+:root[data-theme="dark"] .auth-method:hover:not(.active),
+:root[data-theme="dark"] button.sso-option:hover{background:#29473f;border-color:#4b9b8d}
+:root[data-theme="dark"] .auth-info{background:#172e30;border-color:var(--line);color:#c5ddda}
+:root[data-theme="dark"] .auth-info summary{color:#93e2cf}
+:root[data-theme="dark"] .auth-info p{color:#b5ccca}
+:root[data-theme="dark"] .auth-helper .btn,
+:root[data-theme="dark"] .v09-auth .auth-compact-link .auth-small-link,
+:root[data-theme="dark"] .v09-auth .auth-compact-link .auth-small-link.active{color:#8fe1d0}
+:root[data-theme="dark"] .auth-helper .btn:hover,
+:root[data-theme="dark"] .v09-auth .auth-compact-link .auth-small-link:hover{color:#c3fff1}
+:root[data-theme="dark"] .sso-divider{color:var(--muted)}
+:root[data-theme="dark"] .sso-divider:before,
+:root[data-theme="dark"] .sso-divider:after{background:var(--line)}
+:root[data-theme="dark"] .sso-option.sso-pending{background:#1c2d32;border-color:var(--line);color:var(--muted)}
+:root[data-theme="dark"] .sso-apple,
+:root[data-theme="dark"] .sso-github{color:var(--ink)}
+:root[data-theme="dark"] .sso-soon{background:#293d42;color:var(--muted)}
+:root[data-theme="dark"] .auth-footer-note,
+:root[data-theme="dark"] .sso-hint{color:var(--muted)}
+:root[data-theme="dark"] .network-status{background:#554327;border-color:#907142;color:#ffe4ab}
+:root[data-theme="dark"] #toast{background:#253a40;color:var(--ink)}
+@media(max-width:680px){
+ .header-controls{gap:6px}
+ .theme-toggle{width:39px;height:39px;min-width:39px}
+ .top .right{gap:6px}
+ .top .right .lang{min-width:53px}
+}
+@media(prefers-reduced-motion:reduce){.theme-toggle{transition:none}}
