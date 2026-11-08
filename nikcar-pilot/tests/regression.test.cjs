@@ -496,3 +496,60 @@ test('Supabase RLS migration denies anonymous sessions without removing existing
    assert.ok(sql.includes("'"+table+"'"),'Missing RLS guard for '+table);
  }
 });
+
+
+test('fictional photo upload smoke: accepted JPEG/PNG/WEBP are sent to private bucket and linked to driver', async () => {
+ for(const [mime,extension] of [['image/jpeg','jpg'],['image/png','png'],['image/webp','webp']]){
+  const h=harness();h.app.setUser({id:'test-driver-auth'});h.app.setMe({...driver,id:'test-driver-profile'});
+  const uploaded=[],inserted=[];
+  h.app.setClient({
+   storage:{from:bucket=>({upload:async(path,file,options)=>{
+    uploaded.push({bucket,path,file,options});return {error:null};
+   },remove:async()=>({error:null})})},
+   from:table=>({insert:async row=>{inserted.push({table,row});return {error:null}}}),
+  });
+  const fictionalPhoto={name:'FICTIONAL_TEST.'+extension,size:125000,type:mime};
+  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[fictionalPhoto],
+   matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  await h.fire('change',{target:input});
+  assert.equal(uploaded.length,1,'one upload '+mime);
+  assert.equal(uploaded[0].bucket,'nikcar-driver-docs');
+  assert.equal(uploaded[0].file,fictionalPhoto);
+  assert.ok(uploaded[0].path.startsWith('test-driver-auth/passport_1/'));
+  assert.ok(uploaded[0].path.endsWith('.'+extension));
+  assert.equal(uploaded[0].options.upsert,false);
+  assert.equal(uploaded[0].options.contentType,mime);
+  assert.equal(inserted.length,1);
+  assert.equal(inserted[0].table,'driver_documents');
+  assert.equal(inserted[0].row.driver_id,'test-driver-profile');
+  assert.equal(inserted[0].row.object_path,uploaded[0].path);
+  assert.equal(input.disabled,false);
+ }
+});
+
+test('fictional photo upload rejects unsupported MIME, empty files and >6 MiB without contacting storage', async () => {
+ for(const file of [
+  {name:'fake.svg',size:500,type:'image/svg+xml'},
+  {name:'empty.jpg',size:0,type:'image/jpeg'},
+  {name:'oversize.jpg',size:6291457,type:'image/jpeg'},
+  {name:'pretend.pdf',size:900,type:'application/pdf'}
+ ]){
+  const h=harness();h.app.setUser({id:'test-driver-auth'});h.app.setMe(driver);
+  let calls=0;h.app.setClient({storage:{from:()=>({upload:async()=>{calls++;return {error:null}}})}});
+  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[file],
+   matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  await h.fire('change',{target:input});
+  assert.equal(calls,0,file.name);
+  assert.equal(input.disabled,false);
+ }
+});
+
+test('document upload blocks owner impersonation before contacting storage', async () => {
+ const h=harness();h.app.setUser({id:'test-owner-auth'});h.app.setMe(owner);
+ let calls=0;h.app.setClient({storage:{from:()=>({upload:async()=>{calls++;return {error:null}}})}});
+ const input={id:'document-input',dataset:{docKind:'passport_1',car:''},
+  files:[{name:'FICTIONAL_TEST.jpg',size:15000,type:'image/jpeg'}],
+  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+ await h.fire('change',{target:input});
+ assert.equal(calls,0);
+});
