@@ -227,7 +227,7 @@ function announcementsPage(){const articles=records.announcements.map(a=>`<artic
  return `<div class="notice-line"><span class="notice-dot"></span><b>${t('fuelOff')}</b><span class="small">${t('fuelNotice')}</span></div><div class="news-grid">${compose}<section class="news-list">${articles||`<div class="card">${t('emptyNews')}</div>`}</section></div>`;
 }
 
-function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><div class="card" style="padding:14px;margin:12px 0"><label class="field" for="tech-passport-photo">📷 Фото техпаспорта · OCR</label><input id="tech-passport-photo" type="file" accept="image/jpeg,image/png,image/webp"><p class="small">Фото розпізнається на пристрої. Перевірте дані перед збереженням.</p><p id="tech-passport-status" class="small" role="status" aria-live="polite"></p></div><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
+function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><div class="card" style="padding:14px;margin:12px 0"><label class="field">📷 Фото техпаспорта (OCR)<input id="tech-passport-photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small" id="tech-passport-status" role="status">Розпізнавання на пристрої. Перевірте дані перед збереженням.</p></div><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
 function docFor(kind,driver,car=null){return records.driver_documents.find(d=>d.kind===kind&&d.driver_id===driver&&(kind==='rental_contract'?d.car_id===car:d.car_id===null));}
 function docRequiredTypes(){return ['passport_1','passport_2','passport_3','tax_id','rental_contract'];}
 function hasLocalDocs(car){return docRequiredTypes().every(kind=>!!docFor(kind,me.id,kind==='rental_contract'?car:null));}
@@ -285,277 +285,34 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
  return `<div class="banner warning">${t('pendingFeature')}</div><div class="two-panel"><div>${newform}</div><div class="card"><h2>${t('repairs')}</h2>${all.map(j=>`<div class="line"><div><b>${e(j.title)}</b><div class="small">${e(carName(j.car_id))} · ${money(repairTotal(j))}</div></div><button class="btn secondary tiny" data-action="select-repair" data-id="${e(j.id)}">${status(j.status==='draft'?'repairDraft':'repairPosted')}</button></div>`).join('')||`<p>${t('repairNoData')}</p>`}</div></div>${detail}`;
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
-// Privacy-first on-device OCR; raw document is never uploaded or logged.
 let passportOcrBusy=false;
 function parseTechPassport(text){
- const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const value=(code)=>{
-  const re=new RegExp('^'+code.replace('.','\\.')+'\\s*[:.\\-]?\\s*(.*)
-// In-memory only: no personal data, credentials or unfinished forms in browser storage.
-let newCarDraft=null;
-function captureNewCarDraft(){
- const form=document.getElementById('new-car');
- if(!form||!user||!isOwner())return;
- newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
-}
-function restoreNewCarDraft(){
- const form=document.getElementById('new-car');
- if(!form||!newCarDraft||newCarDraft.userId!==user?.id)return;
- for(const [name,value] of Object.entries(newCarDraft.values)){
-  const input=form.elements.namedItem(name);
-  if(input)input.value=value;
- }
-}
-function render(){captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Cloud Pilot</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),sos:t('sosTitle'),account:t('account'),payments:t('paymentTitle'),repairs:t('repairTitle')};const b={payments:paymentsPage,repairs:repairsPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);restoreNewCarDraft();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
-async function load({preserveDraft=false}={}){
- if(!sb||!user){me=null;records=emptyRecords();render();return;}
- const expectedUserId=user.id,version=++loadVersion;
- let accessChanged=false;
- try{
-  const {data,error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at').eq('user_id',expectedUserId).maybeSingle();
-  if(version!==loadVersion||user?.id!==expectedUserId)return;
-  if(error)throw error;
-  accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
-  me=data;
-  if(me&&isOwner()&&!sessionInitialized)page='dashboard';
-  sessionInitialized=true;
-  if(me){
-   const targets=[sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,full_name,phone,role,access'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];
-   const loaded=await Promise.all(targets);
-   if(version!==loadVersion||user?.id!==expectedUserId)return;
-   const keys=['payment_claims','repair_jobs','repair_parts','expense_entries','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'];
-   const nextRecords=emptyRecords();
-   for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
-   records=nextRecords;
-  }else records=emptyRecords();
-  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
- }catch(err){
-  if(version!==loadVersion||user?.id!==expectedUserId)return;
-  toast(`${t('systemError')}: ${err.message||err}`);
-  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
- }
-}
-async function mutation(promise,success){
- const {error,data}=await promise;
- if(error){toast(error.message);return false;}
- if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}
- toast(success||'OK');
- // Leave this flag set if a newer background load supersedes our refresh.
- // The first successfully rendered load consumes it (even with a dirty form).
- forceMutationRefresh++;
- await load();
- return true;
-}
-async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='toggle-theme'){applyTheme(theme==='light'?'dark':'light');return;}if(a==='nav'){showMore=false;if(btn.dataset.page==='documents'&&isOwner())selectedDriverId=null;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){const {error}=await sb.auth.signOut();if(error)throw error;user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
- if(a==='select-repair'){currentRepair=id;page='repairs';render();return;}
- if(a==='voice-repair'){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(t('repairVoiceUnavailable'));return;}const speech=new SR();speech.lang=lang==='uk'?'uk-UA':'en-US';speech.interimResults=false;speech.maxAlternatives=1;speech.onresult=event=>{const input=document.getElementById('repair-voice-target');if(input)input.value=(input.value+' '+event.results[0][0].transcript).trim();};speech.onerror=()=>toast(t('repairVoiceUnavailable'));speech.start();return;}
- if(a==='confirm-payment'||a==='reject-payment'){if(!isOwner())return;const pay=records.payment_claims.find(p=>p.id===id);if(!pay||pay.status!=='declared')return;const proceed=window.confirm(`${t(a==='confirm-payment'?'confirmPayment':'rejectPayment')} · ${money(pay.amount)}?`);if(!proceed)return;const {error}=await sb.rpc('nikcar_decide_payment',{p_id:id,p_confirm:a==='confirm-payment',p_note:''});if(error)throw error;toast(t(a==='confirm-payment'?'confirmed':'rejected'));await load();return;}
- if(a==='post-repair'){if(!isOwner())return;const item=records.repair_jobs.find(x=>x.id===id);if(!item||item.status!=='draft')return;if(!window.confirm(`${t('repairPost')} · ${money(repairTotal(item))}?`))return;const {error,data}=await sb.rpc('nikcar_post_repair',{p_repair:id});if(error)throw error;toast(`${t('repairTotal')}: ${money(data)}`);await load();return;}
- if(a==='remove-part'){if(!isOwner())return;const item=records.repair_parts.find(x=>x.id===id);if(!item||records.repair_jobs.find(x=>x.id===item.repair_id)?.status!=='draft')return;await mutation(sb.from('repair_parts').delete().eq('id',id));return;} 
- if(a==='edit-car'){if(!isOwner())return;carEditor=id;page='cars';render();return;}
- if(a==='cancel-car-edit'){carEditor=null;render();return;}
- if(a==='driver-docs'){if(!isOwner())return;const driver=records.profiles.find(p=>p.id===id&&p.role==='driver');if(!driver)return;selectedDriverId=driver.id;page='documents';render();window.scrollTo(0,0);return;}if(a==='all-driver-docs'){if(!isOwner())return;selectedDriverId=null;page='documents';render();return;}
- if(a==='set-driver-access'){
-  if(!isOwner())return;const sel=document.querySelector(`select[data-driver-id="${id}"]`);const desired=sel?.value;
-  if(!desired||!window.confirm(t('confirmChange')))return;
-  return mutation(sb.rpc('nikcar_owner_set_driver_access',{target_driver_id:id,target_access:desired}),t('applyAccess'));
- }
- if(a==='delete-announcement'){
-  if(!isOwner()||!window.confirm(t('removeNews')+'?'))return;
-  return mutation(sb.from('announcements').delete().eq('id',id));
- }
- if(a==='copy-announcement'){
-  const article=records.announcements.find(x=>x.id===id);if(!article)return;
-  try{await navigator.clipboard.writeText(`${article['title_'+lang]}\n\n${article['body_'+lang]}\n\nNikCar`);toast(t('copyText'))}catch(err){toast(err.message||String(err))}return;
- }
- if(a==='choose-car'){selectedCar=id;page='documents';render();window.scrollTo(0,0);return;}
- if(a==='submit-doc-choice'){if(!selectedCar||!hasLocalDocs(selectedCar)){toast(t('docsMissing'));return;}return mutation(sb.from('rental_requests').insert({car_id:selectedCar,driver_id:me.id}),t('pending'));}
- if(a==='open-doc'){const doc=records.driver_documents.find(d=>d.id===id);if(!doc)return;const tab=window.open('about:blank','_blank');try{const {data,error}=await sb.storage.from('nikcar-driver-docs').createSignedUrl(doc.object_path,60);if(error)throw error;if(tab){tab.opener=null;tab.location.replace(data.signedUrl);}else toast(lang==='uk'?'Дозвольте відкриття нового вікна для фото':'Allow pop-ups to view the photo');}catch(err){if(tab)tab.close();toast(err.message||String(err));}return;}
- if(a==='approve-request'||a==='reject-request'){return mutation(sb.from('rental_requests').update({status:a==='approve-request'?'approved':'rejected'}).eq('id',id).eq('status','pending').select(),t(a==='approve-request'?'approved':'rejected'));}
- if(a==='handover-rental'||a==='return-rental'){
-  if(!isOwner())return;
-  const request=records.rental_requests.find(x=>x.id===id);
-  if(!request||request.status!=='approved')return;
-  const handing=a==='handover-rental';
-  const title=handing?(lang==='uk'?'Пробіг при видачі, км':'Odometer at handover, km'):(lang==='uk'?'Пробіг при поверненні, км':'Odometer at return, km');
-  const input=window.prompt(title,handing?'':String(request.odometer_out_km??''));
-  if(input===null)return;
-  const raw=String(input).trim(),odometer=Number(raw);
-  if(!/^\\d+$/.test(raw)||!Number.isSafeInteger(odometer)||odometer<0||odometer>3000000||(!handing&&odometer<Number(request.odometer_out_km))){
-   toast(lang==='uk'?'Введіть коректний пробіг у кілометрах.':'Enter a valid odometer reading in kilometres.');return;
-  }
-  if(!window.confirm(handing?(lang==='uk'?'Підтвердіть: бак ПОВНИЙ, авто та ключі передані водію.':'Confirm: fuel tank FULL, vehicle and keys handed to driver.'):(lang==='uk'?'Підтвердіть: бак ПОВНИЙ, авто та ключі повернуті власнику.':'Confirm: fuel tank FULL, vehicle and keys returned to owner.')))return;
-  const note=window.prompt(lang==='uk'?'Примітка до акту (необов’язково)':'Handover/return note (optional)','');
-  if(note===null)return;
-  const fn=handing?'nikcar_handover_rental':'nikcar_return_rental';
-  return mutation(sb.rpc(fn,{p_request:id,p_odometer:odometer,p_full_tank:true,p_note:String(note).slice(0,2000)}),handing?(lang==='uk'?'Авто видано':'Vehicle handed over'):(lang==='uk'?'Авто повернуто':'Vehicle returned'));
- }
- if(a==='cancel-request'){return mutation(sb.from('rental_requests').update({status:'cancelled'}).eq('id',id).eq('status','pending').eq('driver_id',me.id).select(),t('cancelled'));}
- const r=records.sos_requests.find(x=>x.id===id);if(!r)return;
- if(a==='claim-sos'){return mutation(sb.from('sos_requests').update({status:'claimed',helper_id:me.id}).eq('id',id).eq('status','open').is('helper_id',null).select(),t('claimed'));}
- if(a==='release-sos'){return mutation(sb.from('sos_requests').update({status:'open',helper_id:null,resolved_at:null}).eq('id',id).eq('status','claimed').eq('helper_id',me.id).select(),t('open'));}
- if(a==='finish-sos'){return mutation(sb.from('sos_requests').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',id).eq('status','claimed').eq('helper_id',me.id).select(),t('resolved'));}
- if(a==='cancel-sos'){return mutation(sb.from('sos_requests').update({status:'cancelled'}).eq('id',id).eq('status','open').eq('requester_id',me.id).select(),t('cancelled'));}
-}
-document.addEventListener('click',evt=>{
- const b=evt.target.closest('button[data-action]');
- if(!b)return;
- const action=b.dataset.action,key=(actionGroups[action]||action)+':'+(b.dataset.id||'');
- if(isOffline()&&protectedActions.has(action)){toast(offlineMessage());return;}
- if(!protectedActions.has(action)){void clickAction(b).catch(err=>toast(err.message||err));return;}
- if(inFlightActions.has(key))return;
- inFlightActions.add(key);b.disabled=true;
- void clickAction(b).catch(err=>toast(err.message||err)).finally(()=>{
-  inFlightActions.delete(key);
-  if(b.isConnected)b.disabled=false;
- });
-});
-document.addEventListener('change',async evt=>{
- const f=evt.target;
- if(f.id==='document-car'){selectedCar=f.value||null;render();return;}
- if(!f.matches('input[type="file"][data-doc-kind]'))return;
- const file=f.files?.[0],kind=f.dataset.docKind,car=f.dataset.car||null;
- if(!file||docBusy)return;
- if(isOffline()){toast(offlineMessage());return;}
- if(!me||me.role!=='driver'||!canApply()){toast(t('notApproved'));return;}
- if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>6291456||file.size===0){toast(t('docLimit'));return;}
- if(kind==='rental_contract'&&!car){toast(t('selectFirst'));return;}
- const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
- const fileId=crypto.randomUUID();
- const authUserId=user.id,driverProfileId=me.id;
- const path=`${authUserId}/${kind}/${kind==='rental_contract'?car+'/':''}${fileId}.${ext}`;
- let uploaded=false;
- docBusy=true; f.disabled=true;
- try{
-   const {error:uploadError}=await sb.storage.from('nikcar-driver-docs').upload(path,file,{cacheControl:'0',upsert:false,contentType:file.type});
-   if(uploadError)throw uploadError;
-   uploaded=true;
-   if(isOffline())throw new Error(offlineMessage());
-   if(user?.id!==authUserId||me?.id!==driverProfileId)throw new Error(lang==='uk'?'Акаунт змінився під час завантаження. Повторіть спробу.':'Account changed during upload. Please try again.');
-   const old=docFor(kind,driverProfileId,kind==='rental_contract'?car:null);
-   const query=old?sb.from('driver_documents').update({object_path:path}).eq('id',old.id):sb.from('driver_documents').insert({driver_id:driverProfileId,car_id:kind==='rental_contract'?car:null,kind,object_path:path});
-   const {error:saveError}=await query;
-   if(saveError)throw saveError;
-   toast(t('docUploadDone'));await load();
- }catch(error){
-    if(uploaded){
-     // Only a just-uploaded, unlinked file may be removed. Database RLS protects linked files.
-     try{
-      const {error:cleanupError}=await sb.storage.from('nikcar-driver-docs').remove([path]);
-      if(cleanupError)throw cleanupError;
-     }catch(_cleanupError){
-      toast(lang==='uk'?'Не вдалося завершити завантаження. Файл міг залишитися без прив’язки; повідомте адміністратора та оновіть сторінку.':'Upload could not be completed. An unlinked file may remain; contact the administrator and refresh.');
-      return;
-     }
-    }
-    toast(error.message||String(error));
- }
- finally{docBusy=false;f.disabled=false;}
-});
-document.addEventListener('change',evt=>{if(evt.target.id==='tech-passport-photo'&&evt.target.files?.[0])void readTechPassport(evt.target.files[0]);});
-document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
-document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
-document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
- if(isOffline())throw new Error(offlineMessage());
- if(form.id==='auth-form'){const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');lastAuthEmail=email;
-  if(mode==='reset'){assertAuthEmailCooldown();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:authRedirect});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса зареєстрована, лист для відновлення надіслано. Перевірте «Спам».':'If this address is registered, a recovery link has been sent. Check spam too.';render();return;}
-  if(mode==='signup'){const repeated=String(f.get('confirm_password')||'');if(password.length<10||password.length>128)throw Error(lang==='uk'?'Пароль повинен містити 10–128 символів.':'Password must have 10–128 characters.');if(password!==repeated)throw Error(lang==='uk'?'Паролі не збігаються.':'Passwords do not match.');assertAuthEmailCooldown();const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:authRedirect,data:{full_name:String(f.get('fullname')||'').trim()}}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=data?.session?(lang==='uk'?'Обліковий запис створено.':'Account created.'):(lang==='uk'?'Якщо реєстрація можлива, ви отримаєте лист підтвердження. Перевірте «Спам».':'If registration is available, you will receive a confirmation email. Check spam too.');mode='signin';render();return;}
-  if(mode==='signin'&&authMethod==='magic'){assertAuthEmailCooldown();const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:authRedirect,shouldCreateUser:false}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо акаунт існує, лист для входу надіслано. Перевірте пошту.':'If the account exists, a sign-in email has been sent. Check your inbox.';render();return;}
-  const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;return;}
- if(form.id==='new-password-form'){
-  const pw=String(f.get('password')||''),pw2=String(f.get('confirm_password')||'');
-  if(pw.length<10||pw.length>128)throw Error(lang==='uk'?'Пароль повинен містити 10–128 символів.':'Password must have 10–128 characters.');
-  if(pw!==pw2)throw Error(lang==='uk'?'Паролі не збігаються.':'Passwords do not match.');
-  const {error}=await sb.auth.updateUser({password:pw});
-  if(error)throw error;
-  // Changing the password does not guarantee that the existing session was closed.
-  // Do not claim a successful logout unless Supabase explicitly confirms it.
-  let logoutError;
-  try{const result=await sb.auth.signOut();logoutError=result?.error||null;}
-  catch(err){logoutError=err;}
-  if(logoutError){
-   authNoticeIsError=true;
-   authNotice=lang==='uk'?'Пароль змінено, але завершити сеанс не вдалося. Скористайтеся кнопкою «Вийти з акаунта» та перевірте підключення.':'Password changed, but signing out failed. Use the Sign out button and check your connection.';
-   render();
-   return;
-  }
-  user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);
-  mode='signin';authNoticeIsError=false;authNotice=t('authRecoverDone');render();return;
- }
- if(form.id==='cash-payment-form'){if(!canApply())return;const rentalId=String(f.get('rental')||'');if(!records.rental_requests.some(r=>r.id===rentalId&&r.driver_id===me.id&&r.status==='approved'))throw Error(t('noApprovedRental'));const amount=Number(f.get('amount'));if(!(amount>0&&amount<=1000000))throw Error(t('amount'));if(!window.confirm(t('paymentHint')))return;await mutation(sb.from('payment_claims').insert({driver_id:me.id,rental_request_id:rentalId,method:f.get('method'),amount,driver_note:String(f.get('note')||'').trim()}),t('declared'));return;}
- if(form.id==='repair-create'){if(!isOwner())return;const title=String(f.get('title')||'').trim(),vin=String(f.get('vin')||'').trim().toUpperCase(),labor=Number(f.get('labor'));if(vin&&!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin))throw Error(t('repairVIN'));const {data,error}=await sb.from('repair_jobs').insert({car_id:String(f.get('car')),title,vin:vin||null,symptoms:String(f.get('symptoms')||'').trim(),labor_cost:labor,created_by:me.id}).select('id').single();if(error)throw error;currentRepair=data.id;toast(t('repairCreate'));await load();return;}
- if(form.id==='repair-add-part'){if(!isOwner()||!currentRepair)return;const job=records.repair_jobs.find(j=>j.id===currentRepair);if(!job||job.status!=='draft')return;const price=Number(f.get('unit_price')),qty=Number(f.get('qty'));if(!Number.isFinite(price)||price<0||!Number.isFinite(qty)||qty<=0)throw Error(t('repairPrice'));await mutation(sb.from('repair_parts').insert({repair_id:currentRepair,item_name:String(f.get('item')||'').trim(),article:String(f.get('article')||'').trim(),supplier:String(f.get('supplier')||'').trim(),supplier_url:String(f.get('url')||'').trim(),quantity:qty,unit_price:price}));return;}
- if(form.id==='announcement-form'){
-  if(!isOwner())return;await mutation(sb.from('announcements').insert({author_id:me.id,title_uk:String(f.get('title_uk')||'').trim(),title_en:String(f.get('title_en')||'').trim(),body_uk:String(f.get('body_uk')||'').trim(),body_en:String(f.get('body_en')||'').trim(),pinned:f.get('pinned')==='on'}));return;
- }
- if(form.id==='edit-car-form'){
-  if(!isOwner())return;const carId=String(f.get('id')||'');
-  const saved=await mutation(sb.from('cars').update({plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}).eq('id',carId));if(saved){carEditor=null;render();}return;
- }
- if(form.id==='new-car'){const saved=await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));if(saved){form.reset();newCarDraft=null;render();}return;}
- if(form.id==='chat-send'){await mutation(sb.from('chat_messages').insert({sender_id:me.id,body:String(f.get('text')).trim()}));return;}
- if(form.id==='sos-create'){await mutation(sb.from('sos_requests').insert({requester_id:me.id,category:f.get('category'),note:String(f.get('note')||'').trim(),location_text:String(f.get('location')||'').trim()}));return;}
- if(form.id==='profile-update'){await mutation(sb.from('profiles').update({full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()}).eq('id',me.id));return;}
- }catch(err){if(form.id==='auth-form'||form.id==='new-password-form'){const op=form.id==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(err.message||err);}finally{if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
-(async()=>{if(!configured){render();return;}try{
- const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
- sb=mod.createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
- // Subscribe FIRST: Supabase can emit PASSWORD_RECOVERY while processing the URL/session.
- sb.auth.onAuthStateChange((event,s)=>{
-  const nextUser=s?.user||null,nextId=nextUser?.id||null;
-  if(nextId!==currentAuthUserId){clearAccountState();currentAuthUserId=nextId;}
-  user=nextUser;
-  if(event==='PASSWORD_RECOVERY')setRecoveryMode(true);
-  if(event==='SIGNED_OUT')setRecoveryMode(false);
-  if(event!=='INITIAL_SESSION')setTimeout(()=>load(),0);
- });
- const {data:{session},error}=await sb.auth.getSession();
- if(error)throw error;
- const initialId=session?.user?.id||null;
- if(initialId!==currentAuthUserId){clearAccountState();currentAuthUserId=initialId;}
- user=session?.user||null;
- if(!user&&recoveryMode){setRecoveryMode(false);mode='reset';authNotice=lang==='uk'?'Посилання відновлення недійсне або термін його дії минув. Запитайте новий лист.':'Recovery link is invalid or expired. Request a new email.';}
- await load();
- void checkOAuthAvailability();
- for(const table of ['chat_messages','sos_requests','rental_requests','announcements','payment_claims','repair_jobs'])
-  sb.channel(`nikcar-${table}`).on('postgres_changes',{event:'*',schema:'public',table},()=>{if(user&&!recoveryMode)void load({preserveDraft:true});}).subscribe();
- }catch(err){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('systemError')}</h1><p>${e(err.message||err)}</p></div></div>`;}})();,'i');
-  for(let i=0;i<lines.length;i++){const m=lines[i].match(re);if(m)return (m[1]||lines[i+1]||'').trim();}
-  return '';
+ const lines=String(text||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ const field=code=>{
+  const i=lines.findIndex(x=>x.startsWith(code+' ')||x.startsWith(code+':'));
+  return i<0?'':(lines[i].slice(code.length).replace(/^[: ]+/,'')||lines[i+1]||'').trim();
  };
- const plate=(value('A').match(/[A-ZА-ЯІЇЄ0-9]{4,12}/i)||[])[0]||'';
- const make=value('D.1').replace(/[^\p{L}0-9 .-]/gu,'').slice(0,45);
- const model=value('D.3').replace(/[^\p{L}0-9 .-]/gu,'').slice(0,65);
- const yearMatch=String(text).match(/(?:рік\s*випуску|year\s*of\s*manufacture|год\s*выпуска)\s*[:\-]?\s*((?:19|20)\d{2})/i);
- return {plate,model:[make,model].filter(Boolean).join(' ').slice(0,120),year:yearMatch?yearMatch[1]:''};
+ const plate=(field('A').match(/[A-ZА-ЯІЇЄ0-9]{4,12}/i)||[])[0]||'';
+ const make=field('D.1').slice(0,45),model=field('D.3').slice(0,65);
+ const y=String(text).match(/(?:рік випуску|year of manufacture)\\s*[: -]*((?:19|20)\\d{2})/i);
+ return {plate,model:[make,model].filter(Boolean).join(' ').slice(0,120),year:y?y[1]:''};
 }
 async function readTechPassport(file){
- if(passportOcrBusy||!isOwner())return;
  const status=document.getElementById('tech-passport-status'),input=document.getElementById('tech-passport-photo');
- if(!status||!input)return;
- if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Оберіть JPG, PNG або WEBP до 6 МБ.';input.value='';return;}
- passportOcrBusy=true;input.disabled=true;
+ if(!status||!input||passportOcrBusy||!isOwner())return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Лише JPG, PNG, WEBP до 6 МБ';return;}
+ passportOcrBusy=true;input.disabled=true;status.textContent='Розпізнавання…';
  try{
-  status.textContent='Розпізнавання на пристрої…';
-  if(!window.Tesseract){
-   await new Promise((resolve,reject)=>{
-    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-    script.onload=resolve;script.onerror=()=>reject(Error('OCR library unavailable'));document.head.appendChild(script);
-   });
-  }
-  if(!window.Tesseract?.createWorker)throw Error('OCR unavailable');
+  if(!window.Tesseract)await new Promise((ok,fail)=>{
+   const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
+  });
   const worker=await window.Tesseract.createWorker('eng+ukr',1);
-  let result;
-  try{result=await worker.recognize(file);}finally{await worker.terminate();}
-  const found=parseTechPassport(result?.data?.text||'');
-  const form=document.getElementById('new-car');if(!form)return;
-  for(const name of ['plate','model','year']){
-   const field=form.elements.namedItem(name);
-   if(field&&found[name]&&!field.value.trim())field.value=found[name];
-  }
-  form.dataset.dirty='1';
-  status.textContent='Перевірте розпізнані дані та введіть тариф вручну. Нерозпізнані поля заповніть самостійно.';
- }catch(_){status.textContent='Не вдалося розпізнати фото. Заповніть поля вручну.';}
+  let result;try{result=await worker.recognize(file);}finally{await worker.terminate();}
+  const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
+  if(!form)return;
+  for(const name of ['plate','model','year']){const field=form.elements.namedItem(name);if(field&&!field.value.trim()&&values[name])field.value=values[name];}
+  form.dataset.dirty='1';status.textContent='Перевірте всі поля. Тариф введіть вручну.';
+ }catch(_){status.textContent='Не вдалося розпізнати. Введіть дані вручну.';}
  finally{passportOcrBusy=false;input.disabled=false;input.value='';}
 }
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
@@ -720,6 +477,7 @@ document.addEventListener('change',async evt=>{
  }
  finally{docBusy=false;f.disabled=false;}
 });
+document.addEventListener('change',evt=>{if(evt.target.id==='tech-passport-photo'&&evt.target.files?.[0])void readTechPassport(evt.target.files[0]);});
 document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
 document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
