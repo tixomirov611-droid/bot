@@ -222,3 +222,7 @@ button.sso-option:hover{background:#f0faf6;border-color:#88c6b7;box-shadow:0 4px
  .v09-auth .auth-tabs{margin-bottom:15px}
  .v09-auth .sso-section{margin-top:15px}
 }
+
+/* Offline connectivity notice; kept outside the JS-rendered application root. */
+.network-status{position:sticky;top:0;z-index:1100;width:100%;padding:12px 18px;text-align:center;background:#fff0cc;color:#664500;border-bottom:1px solid #d5a949;font-weight:700;line-height:1.5}
+.network-status[hidden]{display:none}
