@@ -441,7 +441,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.14\.2/);
+ assert.match(html,/style\.css\?v=0\.15\.0/);
  assert.equal(manifest.theme_color,'#DFFF00');
  assert.match(source,/SERVICE · FLEET/);
 });
@@ -462,7 +462,7 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
  assert.match(css,/button:focus-visible,a:focus-visible/);
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
- assert.match(html,/style\.css\?v=0\.14\.2/);
+ assert.match(html,/style\.css\?v=0\.15\.0/);
 });
 
 test('owner sees rental handover and return controls, drivers cannot perform them', () => {
