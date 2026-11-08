@@ -85,6 +85,18 @@ test('background refresh updates records without resetting unsaved form', async 
   assert.notEqual(h.root.innerHTML,'INITIAL');
 });
 
+test('role or access demotion redraws immediately even if an old form is dirty', async () => {
+  const h=harness();
+  h.app.setUser({id:'u1'});
+  h.app.setMe(owner);
+  const blocked={id:'o1',role:'driver',access:'blocked',full_name:'Owner'};
+  h.app.setClient(mockDb(blocked));
+  h.setDirty(true);
+  await h.app.load({preserveDraft:true});
+  assert.notEqual(h.root.innerHTML,'INITIAL');
+  assert.equal(h.app.get().me.access,'blocked');
+});
+
 test('typing marks forms dirty so background updates preserve them', async () => {
   const h = harness();
   const form = {dataset:{}};
