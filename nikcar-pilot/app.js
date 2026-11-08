@@ -384,9 +384,9 @@ function parseTechPassport(text){
  // Ukrainian plate: two letters, four digits, two letters; tolerate OCR spacing and Cyrillic lookalikes.
  const platePattern=/[A-ZА-ЯІЇЄ]{2}[\s-]*[0-9OО]{4}[\s-]*[A-ZА-ЯІЇЄ]{2}/ig;
  const candidates=[...plateSource.matchAll(platePattern),...raw.matchAll(platePattern)];
- const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,'').replace(/[ОO]/g,'0'):'';
+ const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,''):'';
  // Dates in Diia screenshots (updated/insurance) are NOT manufacturing years.
- const yearSource=extract(/^(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*:/i)||code('B');
+ const yearSource=extract(/^(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*:/i);
  const yearMatch=yearSource.match(/\b(?:19|20)\d{2}\b/);
  const year=yearMatch?yearMatch[0]:'';
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
