@@ -218,7 +218,7 @@ test('offline form submit neither sends a request nor discards user input', asyn
  await h.fire('submit',{target:form,preventDefault(){}});
  assert.equal(loginCalls,0);
  assert.equal(form.dataset.submitting,'0');
- assert.match(h.root.innerHTML,/Немає підключення до інтернету/);
+ assert.equal(h.root.innerHTML,'INITIAL'); // No re-render: the existing form and its input values stay intact.
  assert.match(h.toast.textContent,/інтернету|дію/i);
 });
 
