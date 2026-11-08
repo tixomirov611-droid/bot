@@ -393,6 +393,7 @@ test('saved dark theme persists on app reload and is accessible in English', () 
  assert.equal(h.doc.documentElement.dataset.theme,'dark');
  assert.match(h.app.themeLogin(),/aria-label="Light theme"/);
  assert.match(h.app.themeLogin(),/aria-pressed="true"/);
+ h.app.setUser({id:'theme-user',email:'test@example.com'});h.app.setMe(owner);
  assert.match(h.app.themeHeader(),/data-action="toggle-theme"/);
 });
 
