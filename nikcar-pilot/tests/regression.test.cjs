@@ -427,3 +427,21 @@ test('recovery email keeps the valid link and includes NikCar signature and rast
  assert.equal(logo.readUInt32BE(16),96);
  assert.equal(logo.readUInt32BE(20),96);
 });
+
+test('NikCar Service acid-lime identity is consistent across both themes and app icon', () => {
+ const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
+ const icon=fs.readFileSync(path.join(__dirname,'..','icon.svg'),'utf8');
+ const brand=fs.readFileSync(path.join(__dirname,'..','brand-logo.svg'),'utf8');
+ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+ const manifest=JSON.parse(fs.readFileSync(path.join(__dirname,'..','manifest.webmanifest'),'utf8'));
+ assert.match(css,/--brand-lime:#dfff00/);
+ assert.match(css,/:root\[data-theme="dark"\]/);
+ assert.match(css,/--bg:#101116/);
+ assert.match(css,/--surface:#fff/);
+ assert.match(icon,/#DFFF00/);
+ assert.match(brand,/NikCar Service/i);
+ assert.match(brand,/>SERVICE</);
+ assert.match(html,/style\.css\?v=0\.14\.0/);
+ assert.equal(manifest.theme_color,'#DFFF00');
+ assert.match(source,/SERVICE · FLEET/);
+});
