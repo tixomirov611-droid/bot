@@ -64,10 +64,15 @@ const ownerTabs=[['dashboard','⌂'],['cars','🚙'],['drivers','♙'],['request
 const tabsForRole=()=>isOwner()?ownerTabs:driverTabs;
 let carEditor=null;let sessionInitialized=false;let showMore=false;let currentRepair=null;
 let selectedDriverId=null,currentAuthUserId=null,loadVersion=0,lastForegroundRefresh=0;
-let forceMutationRefresh=false;
+let forceMutationRefresh=0;
 // Keep user-entered data intact while background Realtime/visibility updates arrive.
 function hasUnsavedForm(){return !!document.querySelector('form[data-dirty="1"],form[data-submitting="1"]');}
 const inFlightActions=new Set();
+const actionGroups={
+ 'confirm-payment':'payment','reject-payment':'payment',
+ 'approve-request':'rental','reject-request':'rental','cancel-request':'rental',
+ 'claim-sos':'sos','release-sos':'sos','finish-sos':'sos','cancel-sos':'sos'
+};
 const protectedActions=new Set([
  'signout','resend-confirm','submit-doc-choice','open-doc',
  'approve-request','reject-request','cancel-request',
@@ -269,8 +274,8 @@ async function mutation(promise,success){
  if(error){toast(error.message);return false;}
  if(Array.isArray(data)&&data.length===0){toast(lang==='uk'?'Заявка вже змінена іншим водієм. Оновлюємо статус.':'This request was already changed by someone else. Refreshing.');await load();return false;}
  toast(success||'OK');
- forceMutationRefresh=true;
- try{await load();}finally{forceMutationRefresh=false;}
+ forceMutationRefresh++;
+ try{await load();}finally{forceMutationRefresh--;}
  return true;
 }
 async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='nav'){showMore=false;if(btn.dataset.page==='documents'&&isOwner())selectedDriverId=null;page=btn.dataset.page;render();window.scrollTo(0,0);return;}if(a==='more'){showMore=!showMore;render();return;}if(a==='auth-mode'){mode=btn.dataset.value;authNotice='';authNoticeIsError=false;render();return;}if(a==='change-password'){if(!user)return;setRecoveryMode(true);authNotice='';render();return;}if(a==='cancel-recovery'){setRecoveryMode(false);authNotice='';render();return;}if(a==='auth-method'||a==='auth-small-link'){authMethod=btn.dataset.value==='magic'?'magic':'password';authNotice='';authNoticeIsError=false;render();return;}if(a==='refresh'){await load();return;}if(a==='signout'){const {error}=await sb.auth.signOut();if(error)throw error;user=null;currentAuthUserId=null;clearAccountState();setRecoveryMode(false);render();return;}if(a==='oauth'){if(!oauthEnabled[btn.dataset.provider]){authNotice=t('oauthNotReady');render();return;}try{const redirectTo=authRedirect;const {error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo}});if(error)throw error;}catch(err){authNotice=t('oauthNotReady');toast(err.message||authNotice);render()}return;}if(a==='resend-confirm'){const email=(document.querySelector('#auth-form input[name="email"]')?.value||lastAuthEmail||'').trim();if(!email){toast(lang==='uk'?'Вкажіть email у формі вище.':'Enter your email in the form above.');return;}try{assertAuthEmailCooldown();btn.disabled=true;const {error}=await sb.auth.resend({type:'signup',email:String(email).trim().toLowerCase(),options:{emailRedirectTo:authRedirect}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса очікує підтвердження, лист буде надіслано. Перевірте пошту й «Спам».':'If this address is awaiting confirmation, an email will be sent. Check your inbox and spam.';render();}catch(err){authNotice=authErrorMessage(err,'resend');authNoticeIsError=true;render();}finally{if(btn.isConnected)btn.disabled=false;}return;}if(!sb||!me)return;
@@ -309,7 +314,7 @@ async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(
 document.addEventListener('click',evt=>{
  const b=evt.target.closest('button[data-action]');
  if(!b)return;
- const action=b.dataset.action,key=action+':'+(b.dataset.id||'');
+ const action=b.dataset.action,key=(actionGroups[action]||action)+':'+(b.dataset.id||'');
  if(!protectedActions.has(action)){void clickAction(b).catch(err=>toast(err.message||err));return;}
  if(inFlightActions.has(key))return;
  inFlightActions.add(key);b.disabled=true;
