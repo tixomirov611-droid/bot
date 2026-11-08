@@ -485,3 +485,14 @@ test('rental lifecycle SQL guards owner role, full tank, mileage and atomic car 
  assert.match(sql,/status='free' where id=r\.car_id and status='rented'/);
  assert.match(sql,/revoke all on function public\.nikcar_return_rental/);
 });
+
+test('Supabase RLS migration denies anonymous sessions without removing existing ownership checks', () => {
+ const sql=fs.readFileSync(path.join(__dirname,'..','sql','20261108_block_anonymous_sessions.sql'),'utf8');
+ assert.match(sql,/AS RESTRICTIVE FOR ALL TO authenticated/i);
+ assert.match(sql,/auth\.jwt\(\)->>''is_anonymous''/);
+ assert.match(sql,/auth\.uid\(\)/);
+ assert.match(sql,/storage\.objects/);
+ for(const table of ['profiles','cars','rental_requests','payment_claims','driver_documents','repair_jobs']){
+   assert.ok(sql.includes("'"+table+"'"),'Missing RLS guard for '+table);
+ }
+});
