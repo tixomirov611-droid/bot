@@ -441,7 +441,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.14\.1/);
+ assert.match(html,/style\.css\?v=0\.14\.2/);
  assert.equal(manifest.theme_color,'#DFFF00');
  assert.match(source,/SERVICE · FLEET/);
 });
