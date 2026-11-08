@@ -366,28 +366,31 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
 let passportOcrBusy=false;
 function parseTechPassport(text){
- const raw=String(text||'').replace(/\u00a0/g,' ');
+ const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const norm=x=>String(x||'').toUpperCase().replace(/\s+/g,' ').trim();
- const extractLabel=(pattern)=>{
-  for(let i=0;i<lines.length;i++){
-   const m=lines[i].match(pattern);
-   if(m){const tail=lines[i].slice(m.index+m[0].length).replace(/^[\s:–-]+/,'').trim();return tail||lines[i+1]||'';}
-  }
-  return '';
+ const extract=(pattern)=>{
+  const i=lines.findIndex(x=>pattern.test(x));
+  if(i<0)return '';
+  const line=lines[i],match=line.match(pattern);
+  const tail=line.slice(match.index+match[0].length).replace(/^[\s:–-]+/,'').trim();
+  return tail||lines[i+1]||'';
  };
- const getCode=code=>extractLabel(new RegExp('^'+code.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
- const make=extractLabel(/^(?:марка|make|brand)\s*:/i)||getCode('D.1');
- const model=extractLabel(/^(?:модель|model)\s*:/i)||getCode('D.3');
- const vinLine=extractLabel(/^(?:VIN|номер кузова|ідентифікаційний номер)\s*:/i)||getCode('E');
- const vin=(vinLine.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'';
- const plateLine=extractLabel(/^(?:державний номер|номерний знак|реєстраційний номер|номер авто|plate)\s*:/i)||getCode('A');
- const plateMatch=plateLine.match(/\b[A-ZА-ЯІЇЄ]{2}\s*\d{4}\s*[A-ZА-ЯІЇЄ]{2}\b/i)||raw.match(/\b[A-ZА-ЯІЇЄ]{2}\s*\d{4}\s*[A-ZА-ЯІЇЄ]{2}\b/i);
- const plate=plateMatch?plateMatch[0].replace(/\s+/g,''):'';
- const yearLine=extractLabel(/^(?:рік випуску|рік виробництва|year of manufacture)\s*:/i);
- const yearMatch=(yearLine||raw).match(/\b(?:19|20)\d{2}\b/);
- const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/, '').trim()).filter(Boolean).join(' ').slice(0,120);
- return {plate,model:cleanedModel,year:yearMatch?yearMatch[0]:'',vin};
+ const code=c=>extract(new RegExp('^'+c.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
+ const make=extract(/^(?:марка|make|brand)\s*:/i)||code('D.1');
+ const model=extract(/^(?:модель|model)\s*:/i)||code('D.3');
+ const vinSource=extract(/^(?:VIN|номер кузова|ідентифікаційний номер)\s*:/i)||code('E');
+ const vin=(vinSource.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'';
+ const plateSource=extract(/^(?:державний номер|номерний знак|реєстраційний номер|номер авто|plate)\s*:/i)||code('A');
+ // Ukrainian plate: two letters, four digits, two letters; tolerate OCR spacing and Cyrillic lookalikes.
+ const platePattern=/[A-ZА-ЯІЇЄ]{2}[\s-]*[0-9OО]{4}[\s-]*[A-ZА-ЯІЇЄ]{2}/ig;
+ const candidates=[...plateSource.matchAll(platePattern),...raw.matchAll(platePattern)];
+ const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,'').replace(/[ОO]/g,'0'):'';
+ // Dates in Diia screenshots (updated/insurance) are NOT manufacturing years.
+ const yearSource=extract(/^(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*:/i)||code('B');
+ const yearMatch=yearSource.match(/\b(?:19|20)\d{2}\b/);
+ const year=yearMatch?yearMatch[0]:'';
+ const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
+ return {plate,model:cleanedModel,year,vin};
 }
 async function readTechPassport(file){
  const status=document.getElementById('tech-passport-status'),input=document.getElementById('tech-passport-photo');
@@ -399,18 +402,18 @@ async function readTechPassport(file){
    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
   });
   const worker=await window.Tesseract.createWorker('eng+ukr',1);
-  let result;try{result=await worker.recognize(file);}finally{await worker.terminate();}
+  let result;try{result=await worker.recognize(file);const initial=parseTechPassport(result.data.text);if(!initial.plate){try{const img=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=Math.min(img.width,1600);canvas.height=Math.round(img.height*0.4*canvas.width/img.width);const ctx=canvas.getContext('2d');ctx.drawImage(img,0,img.height*0.6,img.width,img.height*0.4,0,0,canvas.width,canvas.height);img.close();const lower=await worker.recognize(canvas);result.data.text+='\n'+lower.data.text;}catch(_){/* Keep original OCR result */}}}finally{await worker.terminate();}
   const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
   if(!form)return;
   let filled=0;
   for(const name of ['plate','model','year']){
    const field=form.elements.namedItem(name);
-   if(field&&values[name]){field.value=values[name];filled++;}
+   if(field&&values[name]&&(!field.value.trim()||name==='plate'&&field.dataset.ocrFilled==='1')){field.value=values[name];field.dataset.ocrFilled='1';filled++;}
   }
   form.dataset.dirty='1';captureNewCarDraft();
   const vinPreview=document.getElementById('tech-passport-vin');
   if(vinPreview)vinPreview.textContent=values.vin?'VIN: '+values.vin+' (лише попередній перегляд)':'VIN не розпізнано';
-  status.textContent=filled?'Заповнено полів: '+filled+'. Перевірте дані перед збереженням. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
+  status.textContent=filled?'Заповнено полів: '+filled+'. '+(!values.plate?'Держномер не знайдено — введіть вручну. ':'')+(!values.year?'Рік випуску не вказаний — не беремо дату оновлення Дії. ':'')+'Перевірте дані. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
  }catch(err){status.textContent='Не вдалося розпізнати. Перевірте інтернет для завантаження OCR або введіть дані вручну.';}
  finally{passportOcrBusy=false;input.disabled=false;input.value='';}
 }
