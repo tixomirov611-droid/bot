@@ -235,7 +235,9 @@ function fleetServicePage(){
  const events=(records.fleet_service_events||[]).slice().sort((a,b)=>(a.completed_at?1:0)-(b.completed_at?1:0)||String(a.due_date||'9999').localeCompare(String(b.due_date||'9999')));
  const rows=events.map(x=>{
   const days=x.due_date?Math.round((new Date(x.due_date+'T12:00:00')-today)/86400000):null;
-  const kmLeft=x.due_odometer_km!=null&&x.current_odometer_km!=null?x.due_odometer_km-x.current_odometer_km:null;
+  const latestInspection=(records.fleet_inspections||[]).filter(z=>z.car_id===x.car_id&&z.odometer_km!=null).sort((a,b)=>String(b.inspected_at).localeCompare(String(a.inspected_at)))[0];
+  const effectiveKm=Math.max(Number(x.current_odometer_km)||0,Number(latestInspection?.odometer_km)||0);
+  const kmLeft=x.due_odometer_km!=null&&effectiveKm>0?x.due_odometer_km-effectiveKm:null;
   const urgent=!x.completed_at&&((days!==null&&days<=30)||(kmLeft!==null&&kmLeft<=1000));
   const tag=x.completed_at?'✓ Виконано':urgent?'⚠ Потребує уваги':'Заплановано';
   return `<div class="line"><div><b>${e(x.title)}</b> · ${e(carName(x.car_id))}<div class="small">${e(x.kind)} · ${x.due_date?e(x.due_date):'Без дати'}${x.due_odometer_km!=null?' · ТО на '+e(x.due_odometer_km)+' км':''} · ${tag}</div>${x.notes?'<div class="small">'+e(x.notes)+'</div>':''}</div>${!x.completed_at?`<button class="btn secondary tiny" data-action="service-done" data-id="${e(x.id)}">Виконано</button>`:''}</div>`;
@@ -252,7 +254,7 @@ function fleetEvidencePage(){
   const overall=['critical','attention','ok','unknown'].find(k=>[x.engine,x.brakes,x.tires,x.body].includes(k))||'unknown';
   return `<div class="line"><div><b>${e(carName(x.car_id))}</b> · ${d(x.inspected_at)}<div class="small">Оцінка: ${e(stateLabel[overall])} · Двигун: ${e(vals[0])} · Гальма: ${e(vals[1])} · Шини: ${e(vals[2])} · Кузов: ${e(vals[3])}</div>${x.odometer_km!=null?'<div class="small">Пробіг: '+e(x.odometer_km)+' км</div>':''}${x.notes?'<div class="small">'+e(x.notes)+'</div>':''}</div></div>`;
  }).join('');
- const photoOptions=(records.fleet_files||[]).filter(x=>['damage_photo','inspection_photo'].includes(x.kind)).map(x=>`<option value="${e(x.id)}" data-car="${e(x.car_id)}">${e(carName(x.car_id))} · ${e(x.title)} · ${d(x.created_at)}</option>`).join('');
+ const photoOptions=(records.fleet_files||[]).filter(x=>['damage_photo','inspection_photo'].includes(x.kind)&&/\.(jpg|jpeg|png|webp)$/i.test(x.object_path)).map(x=>`<option value="${e(x.id)}" data-car="${e(x.car_id)}">${e(carName(x.car_id))} · ${e(x.title)} · ${d(x.created_at)}</option>`).join('');
  const reviews=(records.fleet_damage_reviews||[]).slice(0,15).map(x=>{
   const result=x.result||{},findings=Array.isArray(result.possible_new_damage)?result.possible_new_damage:[];
   return `<div class="line"><div><b>${e(carName(x.car_id))}</b> · ${d(x.created_at)}<div class="small">${e(result.summary||'Без висновку')}</div><div class="small">Можливі пошкодження: ${findings.length} · ${x.owner_decision?e(x.owner_decision):'Очікує рішення власника'}</div>${findings.slice(0,5).map(z=>'<div class="small">'+e(z.area||'')+' · '+e(z.type||'')+' · '+e(z.evidence||'')+'</div>').join('')}</div>${!x.owner_decision?`<div class="actions"><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="needs_inspection">Огляд</button><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="accepted">Підтвердити</button><button class="btn secondary tiny" data-action="damage-decision" data-id="${e(x.id)}" data-decision="rejected">Відхилити</button></div>`:''}</div>`;
@@ -646,7 +648,7 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   const photos=records.fleet_files.filter(x=>x.id===before_file_id||x.id===after_file_id);
   if(before_file_id===after_file_id||photos.length!==2||photos[0].car_id!==photos[1].car_id)throw Error('Оберіть два різні фото одного автомобіля');
   const {data,error}=await sb.functions.invoke('nikcar-damage-ai',{body:{car_id:photos[0].car_id,before_file_id,after_file_id}});
-  if(error)throw error;
+  if(error){const details=error.context?.json?await error.context.json().catch(()=>null):null;throw Error(details?.message||details?.error||error.message||'Помилка ІІ');}
   if(data?.error)throw Error(data.message||data.error);
   toast('Попередній ІІ-висновок збережено. Перевірте його вручну.');await load();return;
  }
@@ -664,6 +666,7 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   const file=f.get('file'),kind=String(f.get('kind')),car_id=String(f.get('car_id')),title=String(f.get('title')||'').trim();
   const types={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'};
   if(!file||!types[file.type]||!file.size||file.size>15728640)throw Error('Дозволені JPG, PNG, WebP, PDF до 15 МБ');
+  if(['damage_photo','inspection_photo'].includes(kind)&&file.type==='application/pdf')throw Error('Для фотоогляду завантажте JPG, PNG або WebP, а не PDF');
   if(!['contract','handover_act','return_act','damage_photo','inspection_photo','other'].includes(kind))throw Error('Некоректний тип документа');
   if(title.length<2||title.length>160)throw Error('Вкажіть назву документа');
   const path=user.id+'/'+car_id+'/'+crypto.randomUUID()+'.'+types[file.type];
