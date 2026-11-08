@@ -554,7 +554,7 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
   if(!isOwner())return;const carId=String(f.get('id')||'');
   const saved=await mutation(sb.from('cars').update({plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}).eq('id',carId));if(saved){carEditor=null;render();}return;
  }
- if(form.id==='new-car'){const saved=await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));if(saved){form.reset();newCarDraft=null;render();}return;}
+ if(form.id==='new-car'){const saved=await mutation(sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,daily_rate:Number(f.get('rate'))}));if(saved){form.reset();newCarDraft=null;ownerUiDrafts.delete(user.id+':new-car');render();}return;}
  if(form.id==='chat-send'){await mutation(sb.from('chat_messages').insert({sender_id:me.id,body:String(f.get('text')).trim()}));return;}
  if(form.id==='sos-create'){await mutation(sb.from('sos_requests').insert({requester_id:me.id,category:f.get('category'),note:String(f.get('note')||'').trim(),location_text:String(f.get('location')||'').trim()}));return;}
  if(form.id==='profile-update'){await mutation(sb.from('profiles').update({full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()}).eq('id',me.id));return;}
