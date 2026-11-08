@@ -580,3 +580,12 @@ test('fleet intelligence is owner-only and labels estimates accurately', () => {
  assert.match(source,/peers\.length<3/);
  assert.match(source,/fleetIntelligencePage\(\)/);
 });
+
+test('fleet reminders use owner-only data and warn about missing push delivery',()=>{
+ assert.match(source,/function fleetServicePage\(\)/);
+ assert.match(source,/fleet_service_events/);
+ assert.match(source,/Push-повідомлення ще не підключені/);
+ assert.match(source,/if\(form.id==='service-event'\)/);
+ assert.match(source,/if\(a==='service-done'\)/);
+ assert.match(source,/fleetServicePage\(\)/);
+});
