@@ -553,3 +553,21 @@ test('document upload blocks owner impersonation before contacting storage', asy
  await h.fire('change',{target:input});
  assert.equal(calls,0);
 });
+
+
+test('owner driver-access action does not prompt twice', () => {
+ const branch=source.slice(source.indexOf("if(a==='set-driver-access')"),source.indexOf("if(a==='delete-announcement')"));
+ assert.match(branch,/nikcar_owner_set_driver_access/);
+ assert.doesNotMatch(branch,/window\.confirm/);
+});
+
+test('new-car draft survives tab rerender and mobile reload in session only', () => {
+ assert.match(source,/sessionStorage\.setItem\('nikcar-car-draft:'\+user\.id/);
+ assert.match(source,/sessionStorage\.getItem\('nikcar-car-draft:'\+user\.id/);
+ assert.match(source,/sessionStorage\.removeItem\('nikcar-car-draft:'\+user\.id/);
+ assert.match(source,/if\(form\?\.id==='new-car'\)captureNewCarDraft\(\)/);
+ assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
+ assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
+ const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+ assert.match(html,/app\.js\?v=0\.15\.2/);
+});
