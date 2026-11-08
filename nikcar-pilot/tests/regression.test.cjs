@@ -464,3 +464,14 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
  assert.match(html,/style\.css\?v=0\.14\.2/);
 });
+
+test('Supabase RLS migration denies anonymous sessions without removing existing ownership checks', () => {
+ const sql=fs.readFileSync(path.join(__dirname,'..','sql','20261108_block_anonymous_sessions.sql'),'utf8');
+ assert.match(sql,/AS RESTRICTIVE FOR ALL TO authenticated/i);
+ assert.match(sql,/auth\.jwt\(\)->>''is_anonymous''/);
+ assert.match(sql,/auth\.uid\(\)/);
+ assert.match(sql,/storage\.objects/);
+ for(const table of ['profiles','cars','rental_requests','payment_claims','driver_documents','repair_jobs']){
+   assert.ok(sql.includes("'"+table+"'"),'Missing RLS guard for '+table);
+ }
+});
