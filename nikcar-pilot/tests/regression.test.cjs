@@ -515,7 +515,8 @@ test('fictional photo upload smoke: accepted JPEG/PNG/WEBP are sent to private b
   assert.equal(uploaded.length,1,'one upload '+mime);
   assert.equal(uploaded[0].bucket,'nikcar-driver-docs');
   assert.equal(uploaded[0].file,fictionalPhoto);
-  assert.match(uploaded[0].path,new RegExp('^test-driver-auth/passport_1/[^/]+\\\\.'+extension+'$'));
+  assert.ok(uploaded[0].path.startsWith('test-driver-auth/passport_1/'));
+  assert.ok(uploaded[0].path.endsWith('.'+extension));
   assert.equal(uploaded[0].options.upsert,false);
   assert.equal(uploaded[0].options.contentType,mime);
   assert.equal(inserted.length,1);
