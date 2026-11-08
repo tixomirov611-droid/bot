@@ -227,7 +227,7 @@ function announcementsPage(){const articles=records.announcements.map(a=>`<artic
  return `<div class="notice-line"><span class="notice-dot"></span><b>${t('fuelOff')}</b><span class="small">${t('fuelNotice')}</span></div><div class="news-grid">${compose}<section class="news-list">${articles||`<div class="card">${t('emptyNews')}</div>`}</section></div>`;
 }
 
-function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
+function carsPage(){const owner=isOwner();const list=records.cars.map(c=>`<div class="card"><div class="car-top"><div class="car-icon">${navIcon('cars')}</div>${status(c.status)}</div><div class="car-art"><img src="./fleet-hero.svg" alt="${lang==='uk'?'Ілюстрація автомобіля':'Car illustration'}" loading="lazy"></div><h2 style="margin-top:8px">${e(c.model)}</h2><div class="small">${e(c.plate)} · ${e(c.year||'')}</div><div class="rate">${money(c.daily_rate)} <span class="small">/ ${lang==='uk'?'доба':'day'}</span></div>${owner?`<button class="btn secondary tiny" data-action="edit-car" data-id="${e(c.id)}">${t('carEdit')}</button>`:''}${canApply()&&c.status==='free'?`<button class="btn full" data-action="choose-car" data-id="${e(c.id)}">${t('apply')}</button>`:''}</div>`).join('');const add=owner?`<div class="card" style="margin-top:19px"><h2>${t('newCar')}</h2><div class="card" style="padding:14px;margin:12px 0"><label class="field">📷 Фото техпаспорта (OCR)<input id="tech-passport-photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small" id="tech-passport-status" role="status">Розпізнавання на пристрої. Перевірте дані перед збереженням.</p></div><form class="form" id="new-car"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" required minlength="2" maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" required></label></div><button class="btn" type="submit">${t('saveCar')}</button></form></div>`:'';const edit=owner&&carEditor?(()=>{const c=records.cars.find(v=>v.id===carEditor);return c?`<div class="card" style="margin-top:16px"><h2>${t('carEdit')} · ${e(c.plate)}</h2><form id="edit-car-form" class="form"><input type="hidden" name="id" value="${e(c.id)}"><div class="row stack"><label class="field" style="flex:1">${t('model')}<input name="model" value="${e(c.model)}" required maxlength="120"></label><label class="field" style="flex:1">${t('plate')}<input name="plate" value="${e(c.plate)}" required maxlength="20"></label></div><div class="row stack"><label class="field" style="flex:1">${t('year')}<input name="year" type="number" min="1990" max="2100" value="${e(c.year||'')}"></label><label class="field" style="flex:1">${t('rate')}<input name="rate" type="number" step="0.01" min="1" value="${Number(c.daily_rate)}" required></label></div><div class="actions"><button type="submit" class="btn">${t('saveChanges')}</button><button type="button" class="btn secondary" data-action="cancel-car-edit">${t('cancelEdit')}</button></div></form></div>`:'';})():'';return `<p>${owner?t('summaryInfo'):t('registerInfo')}</p><div class="cards">${list||`<div class="empty-state"><img src="./fleet-hero.svg" loading="lazy" alt=""><div><h3>${t('noCars')}</h3><p>${lang==='uk'?'Додайте перший автомобіль, щоб почати роботу з автопарком.':'Add your first vehicle to start managing the fleet.'}</p></div></div>`}</div>${edit}${add}`}
 function docFor(kind,driver,car=null){return records.driver_documents.find(d=>d.kind===kind&&d.driver_id===driver&&(kind==='rental_contract'?d.car_id===car:d.car_id===null));}
 function docRequiredTypes(){return ['passport_1','passport_2','passport_3','tax_id','rental_contract'];}
 function hasLocalDocs(car){return docRequiredTypes().every(kind=>!!docFor(kind,me.id,kind==='rental_contract'?car:null));}
@@ -285,17 +285,47 @@ function repairsPage(){if(!isOwner())return `<div class="banner warning">${t('no
  return `<div class="banner warning">${t('pendingFeature')}</div><div class="two-panel"><div>${newform}</div><div class="card"><h2>${t('repairs')}</h2>${all.map(j=>`<div class="line"><div><b>${e(j.title)}</b><div class="small">${e(carName(j.car_id))} · ${money(repairTotal(j))}</div></div><button class="btn secondary tiny" data-action="select-repair" data-id="${e(j.id)}">${status(j.status==='draft'?'repairDraft':'repairPosted')}</button></div>`).join('')||`<p>${t('repairNoData')}</p>`}</div></div>${detail}`;
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
+let passportOcrBusy=false;
+function parseTechPassport(text){
+ const lines=String(text||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ const field=code=>{
+  const i=lines.findIndex(x=>x.startsWith(code+' ')||x.startsWith(code+':'));
+  return i<0?'':(lines[i].slice(code.length).replace(/^[: ]+/,'')||lines[i+1]||'').trim();
+ };
+ const plate=(field('A').match(/[A-ZА-ЯІЇЄ0-9]{4,12}/i)||[])[0]||'';
+ const make=field('D.1').slice(0,45),model=field('D.3').slice(0,65);
+ const y=String(text).match(/(?:рік випуску|year of manufacture)\\s*[: -]*((?:19|20)\\d{2})/i);
+ return {plate,model:[make,model].filter(Boolean).join(' ').slice(0,120),year:y?y[1]:''};
+}
+async function readTechPassport(file){
+ const status=document.getElementById('tech-passport-status'),input=document.getElementById('tech-passport-photo');
+ if(!status||!input||passportOcrBusy||!isOwner())return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Лише JPG, PNG, WEBP до 6 МБ';return;}
+ passportOcrBusy=true;input.disabled=true;status.textContent='Розпізнавання…';
+ try{
+  if(!window.Tesseract)await new Promise((ok,fail)=>{
+   const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
+  });
+  const worker=await window.Tesseract.createWorker('eng+ukr',1);
+  let result;try{result=await worker.recognize(file);}finally{await worker.terminate();}
+  const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
+  if(!form)return;
+  for(const name of ['plate','model','year']){const field=form.elements.namedItem(name);if(field&&!field.value.trim()&&values[name])field.value=values[name];}
+  form.dataset.dirty='1';status.textContent='Перевірте всі поля. Тариф введіть вручну.';
+ }catch(_){status.textContent='Не вдалося розпізнати. Введіть дані вручну.';}
+ finally{passportOcrBusy=false;input.disabled=false;input.value='';}
+}
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
 // In-memory only: no personal data, credentials or unfinished forms in browser storage.
 let newCarDraft=null;
 function captureNewCarDraft(){
  const form=document.getElementById('new-car');
- if(!form||!user||!isOwner())return;
+ if(!form?.elements?.namedItem||!user||!isOwner())return;
  newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
 }
 function restoreNewCarDraft(){
  const form=document.getElementById('new-car');
- if(!form||!newCarDraft||newCarDraft.userId!==user?.id)return;
+ if(!form?.elements?.namedItem||!newCarDraft||newCarDraft.userId!==user?.id)return;
  for(const [name,value] of Object.entries(newCarDraft.values)){
   const input=form.elements.namedItem(name);
   if(input)input.value=value;
@@ -447,6 +477,7 @@ document.addEventListener('change',async evt=>{
  }
  finally{docBusy=false;f.disabled=false;}
 });
+document.addEventListener('change',evt=>{if(evt.target.id==='tech-passport-photo'&&evt.target.files?.[0])void readTechPassport(evt.target.files[0]);});
 document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
 document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
