@@ -499,3 +499,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
  .auth-intro .eyebrow,.auth-footer-note,.sso-divider,.sso-hint{font-size:12px}
  .field input,.field select,.field textarea{font-size:16px}
 }
+
+/* Interactive overview cards — responsive, accessible and theme-aware */
+.overview-visual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.overview-visual-card{min-width:0}.overview-visual-card h2{margin-top:0}
+.overview-ring{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.overview-legend{display:grid;gap:12px}.overview-legend>div{display:flex;align-items:center;gap:8px}
+.overview-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.overview-dot.muted{background:var(--line);border:1px solid var(--muted)}
+.overview-bar-row{margin:16px 0}.overview-bar-label{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.overview-bar-track{height:13px;background:var(--line);border-radius:30px;overflow:hidden}
+.overview-bar-track>span{display:block;height:100%;border-radius:30px;transition:width .25s ease}
+.overview-net{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px;margin-top:15px}
+.overview-net strong{font-size:19px}.overview-actions{margin:16px 0}
+.overview-action-buttons{display:flex;flex-wrap:wrap;gap:10px}
+.overview-action-buttons button{min-height:42px}
+@media(max-width:800px){.overview-visual-grid{grid-template-columns:minmax(0,1fr)}.overview-ring{justify-content:center}.overview-legend{min-width:140px}}
+@media(prefers-reduced-motion:reduce){.overview-bar-track>span{transition:none}}
