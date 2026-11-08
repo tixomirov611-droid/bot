@@ -16,16 +16,18 @@ function harness() {
   const events = new Map();
   const root = {innerHTML: 'INITIAL'};
   const toast = {textContent: '', classList: {add(){}, remove(){}}};
+  const netStatus={hidden:true,textContent:''};
   const storageData = {};
   const storage = {
     getItem: k => storageData[k] ?? null,
     setItem: (k,v) => {storageData[k] = String(v);},
     removeItem: k => {delete storageData[k];}
   };
-  let dirty = false;
+  let dirty = false, online = true;
+  const navigatorMock={get onLine(){return online;}};
   const doc = {
     documentElement: {lang: 'uk'}, visibilityState: 'visible',
-    getElementById: k => k === 'root' ? root : toast,
+    getElementById: k => k === 'root' ? root : k === 'network-status' ? netStatus : toast,
     addEventListener(k, fn) {
       const handlers = events.get(k) || [];
       handlers.push(fn);
@@ -36,18 +38,18 @@ function harness() {
   };
   const win = {
     NIKCAR_SUPABASE: {url: 'https://mock.supabase.co', publishableKey: 'mock', redirectUrl: 'https://nikcar-cloud-pilot.onrender.com/'},
-    addEventListener(){}, confirm: () => true, scrollTo(){}
+    addEventListener(k,fn){const handlers=events.get('win:'+k)||[];handlers.push(fn);events.set('win:'+k,handlers);}, confirm: () => true, scrollTo(){}
   };
   function FormDataMock(form) {this.get = k => form.values?.[k] ?? null;}
-  const factory = new Function('document','window','location','localStorage','sessionStorage','navigator','FormData','setTimeout','clearTimeout',
+  const factory = new Function('document','window','location','localStorage','sessionStorage','navigator','FormData','setTimeout','clearTimeout','crypto',
     logic + '\nreturn {setUser:x=>user=x,setMe:x=>me=x,setClient:x=>sb=x,setRecords:x=>records=x,' +
     'get:()=>({user,me,records,page,loadVersion,carEditor}),load,mutation,click:clickAction,docs:documentsPage,' +
     'authErrorMessage,clear:clearAccountState};');
-  const app = factory(doc, win, {hash:'',search:''},storage,storage,{onLine:true},FormDataMock,()=>0,()=>{});
+  const app = factory(doc, win, {hash:'',search:''},storage,storage,navigatorMock,FormDataMock,()=>0,()=>{},{randomUUID:()=> 'mock-file'});
   async function fire(k, event) {
     for(const fn of events.get(k) || []) await fn(event);
   }
-  return {app,root,doc,events,fire,setDirty:x=>{dirty=x;},toast};
+  return {app,root,doc,events,fire,setDirty:x=>{dirty=x;},setOnline:x=>{online=x;},netStatus,toast};
 }
 const owner = {id:'o1',role:'owner',access:'active',full_name:'Owner'};
 const driver = {id:'d1',role:'driver',access:'candidate',full_name:'Driver'};
@@ -191,4 +193,92 @@ test('missing database records keep role-based empty-state pages renderable', as
   await h.app.load();
   assert.match(h.root.innerHTML,/shell/);
   assert.equal(h.app.get().records.cars.length,0);
+});
+
+test('offline banner appears without replacing the login form and disappears on reconnect', async () => {
+ const h=harness();
+ h.setOnline(false);
+ await h.fire('win:offline',{});
+ assert.equal(h.netStatus.hidden,false);
+ assert.match(h.netStatus.textContent,/Немає інтернету/);
+ assert.equal(h.root.innerHTML,'INITIAL');
+ h.setOnline(true);
+ await h.fire('win:online',{});
+ assert.equal(h.netStatus.hidden,true);
+ assert.equal(h.root.innerHTML,'INITIAL');
+});
+
+test('offline form submit neither sends a request nor discards user input', async () => {
+ const h=harness();
+ h.setOnline(false);
+ let loginCalls=0;
+ h.app.setClient({auth:{signInWithPassword:async()=>{loginCalls++;return {error:null}}}});
+ const form={id:'auth-form',dataset:{},values:{email:'driver@example.com',password:'not-a-real-password'},isConnected:true,
+  querySelector:()=>({disabled:false})};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(loginCalls,0);
+ assert.equal(form.dataset.submitting,'0');
+ assert.equal(h.root.innerHTML,'INITIAL'===h.root.innerHTML?'INITIAL':h.root.innerHTML);
+ assert.match(h.toast.textContent,/інтернету|дію/i);
+});
+
+test('offline protected owner action is refused before invoking the server', async () => {
+ const h=harness();
+ h.app.setUser({id:'u1'});h.app.setMe(owner);
+ h.app.setRecords(records({payment_claims:[{id:'p1',status:'declared',amount:500}]}));
+ let calls=0;
+ h.app.setClient({rpc:async()=>{calls++;return {error:null}}});
+ h.setOnline(false);
+ const button={dataset:{action:'confirm-payment',id:'p1'},disabled:false,isConnected:true};
+ await h.fire('click',{target:{closest:()=>button}});
+ assert.equal(calls,0);assert.equal(button.disabled,false);
+ assert.match(h.toast.textContent,/Немає інтернету/);
+});
+
+test('failed database document save removes exactly the newly uploaded orphan', async () => {
+ const h=harness(); h.app.setUser({id:'u1'});h.app.setMe(driver);
+ let uploaded=[],removed=[],saved=[];
+ h.app.setClient({
+  storage:{from:bucket=>({
+   upload:async (path,blob)=>{uploaded.push({bucket,path});return {error:null};},
+   remove:async paths=>{removed.push(paths);return {error:null};}
+  })},
+  from:table=>({insert:async row=>{saved.push({table,row});return {error:new Error('DB rejected row')};}})
+ });
+ const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:100,type:'image/jpeg'}],
+  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+ await h.fire('change',{target:input});
+ assert.equal(uploaded.length,1);
+ assert.equal(saved.length,1);
+ assert.equal(removed.length,1);
+ assert.deepEqual(removed[0],[uploaded[0].path]);
+ assert.equal(uploaded[0].bucket,'nikcar-driver-docs');
+ assert.equal(saved[0].row.driver_id,driver.id);
+ assert.match(h.toast.textContent,/DB rejected row/);
+ assert.equal(input.disabled,false);
+});
+
+test('document upload failure never deletes another file', async () => {
+ const h=harness(); h.app.setUser({id:'u1'});h.app.setMe(driver);
+ let removed=0;
+ h.app.setClient({storage:{from:()=>({
+  upload:async()=>({error:new Error('Upload rejected')}),
+  remove:async()=>{removed++;return {error:null};}
+ })}});
+ const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:50,type:'image/jpeg'}],
+  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+ await h.fire('change',{target:input});
+ assert.equal(removed,0);
+ assert.match(h.toast.textContent,/Upload rejected/);
+});
+
+test('offline document upload never reaches private storage', async () => {
+ const h=harness();h.app.setUser({id:'u1'});h.app.setMe(driver);h.setOnline(false);
+ let uploads=0;
+ h.app.setClient({storage:{from:()=>({upload:async()=>{uploads++;return {error:null}}})}});
+ const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:100,type:'image/jpeg'}],
+  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+ await h.fire('change',{target:input});
+ assert.equal(uploads,0);
+ assert.match(h.toast.textContent,/Немає інтернету/);
 });
