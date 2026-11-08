@@ -319,12 +319,27 @@ async function readTechPassport(file){
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
 // In-memory only: no personal data, credentials or unfinished forms in browser storage.
 let newCarDraft=null;
+function saveNewCarDraft(){
+ if(!user||!isOwner()||!newCarDraft||newCarDraft.userId!==user.id)return;
+ try{sessionStorage.setItem('nikcar-car-draft:'+user.id,JSON.stringify(newCarDraft.values));}catch(_){}
+}
+function readNewCarDraft(){
+ if(!user||!isOwner()||newCarDraft?.userId===user.id)return;
+ try{
+  const values=JSON.parse(sessionStorage.getItem('nikcar-car-draft:'+user.id)||'null');
+  if(values&&typeof values==='object'&&!Array.isArray(values)){
+   newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(k=>[k,typeof values[k]==='string'?values[k]:'']))};
+  }
+ }catch(_){}
+}
 function captureNewCarDraft(){
  const form=document.getElementById('new-car');
  if(!form?.elements?.namedItem||!user||!isOwner())return;
  newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
+ saveNewCarDraft();
 }
 function restoreNewCarDraft(){
+ readNewCarDraft();
  const form=document.getElementById('new-car');
  if(!form?.elements?.namedItem||!newCarDraft||newCarDraft.userId!==user?.id)return;
  for(const [name,value] of Object.entries(newCarDraft.values)){
@@ -515,7 +530,7 @@ document.addEventListener('change',async evt=>{
  finally{docBusy=false;f.disabled=false;}
 });
 document.addEventListener('change',evt=>{if(evt.target.id==='tech-passport-photo'&&evt.target.files?.[0])void readTechPassport(evt.target.files[0]);});
-document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
+document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(form?.id==='new-car')captureNewCarDraft();if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
 document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
  if(isOffline())throw new Error(offlineMessage());
