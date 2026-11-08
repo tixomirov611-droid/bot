@@ -569,7 +569,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.16\.0/);
+ assert.match(html,/app\.js\?v=0\.17\.0/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
@@ -588,4 +588,16 @@ test('fleet reminders use owner-only data and warn about missing push delivery',
  assert.match(source,/if\(form.id==='service-event'\)/);
  assert.match(source,/if\(a==='service-done'\)/);
  assert.match(source,/fleetServicePage\(\)/);
+});
+
+test('fleet evidence is owner-only, uses private storage and does not claim AI detection',()=>{
+ assert.match(source,/function fleetEvidencePage\(\)/);
+ assert.match(source,/if\(!isOwner\(\)\)return '';/);
+ assert.match(source,/nikcar-fleet-private/);
+ assert.match(source,/fleet_inspections/);
+ assert.match(source,/fleet_files/);
+ assert.match(source,/Автоматичний ІІ-аналіз пошкоджень поки не підключений/);
+ assert.match(source,/if\(form.id==='fleet-file-form'\)/);
+ assert.match(source,/if\(form.id==='fleet-inspection-form'\)/);
+ assert.match(source,/fleetEvidencePage\(\)/);
 });
