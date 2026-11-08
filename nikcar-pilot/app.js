@@ -93,6 +93,18 @@ function refreshWhenVisible(){
 }
 window.addEventListener('focus',refreshWhenVisible);
 document.addEventListener('visibilitychange',refreshWhenVisible);
+// The network notice lives outside #root, so connectivity events never wipe typed forms.
+const networkStatus=document.getElementById('network-status');
+function isOffline(){return typeof navigator!=='undefined'&&navigator.onLine===false;}
+function offlineMessage(){return lang==='uk'?'Немає інтернету. Дані не будуть надіслані, доки з’єднання не відновиться.':'No internet connection. Changes cannot be sent until connection returns.';}
+function updateNetworkStatus(){
+ if(!networkStatus)return;
+ networkStatus.hidden=!isOffline();
+ networkStatus.textContent=isOffline()?offlineMessage():'';
+}
+window.addEventListener('offline',updateNetworkStatus);
+window.addEventListener('online',()=>{updateNetworkStatus();if(user&&!recoveryMode)void load({preserveDraft:true});});
+updateNetworkStatus();
 function toast(msg){const n=document.getElementById('toast');n.textContent=String(msg);n.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>n.classList.remove('show'),4300)}
 function status(s){const v=['rejected','cancelled','blocked'].includes(s)?'danger':['pending','claimed','candidate','declared'].includes(s)?'warn':'';return `<span class="tag ${v}">${e(t(s||'unknown'))}</span>`}
 function profile(id){return records.profiles.find(x=>x.id===id)}
@@ -319,6 +331,7 @@ document.addEventListener('click',evt=>{
  const b=evt.target.closest('button[data-action]');
  if(!b)return;
  const action=b.dataset.action,key=(actionGroups[action]||action)+':'+(b.dataset.id||'');
+ if(isOffline()&&protectedActions.has(action)){toast(offlineMessage());return;}
  if(!protectedActions.has(action)){void clickAction(b).catch(err=>toast(err.message||err));return;}
  if(inFlightActions.has(key))return;
  inFlightActions.add(key);b.disabled=true;
@@ -333,27 +346,46 @@ document.addEventListener('change',async evt=>{
  if(!f.matches('input[type="file"][data-doc-kind]'))return;
  const file=f.files?.[0],kind=f.dataset.docKind,car=f.dataset.car||null;
  if(!file||docBusy)return;
+ if(isOffline()){toast(offlineMessage());return;}
  if(!me||me.role!=='driver'||!canApply()){toast(t('notApproved'));return;}
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>6291456||file.size===0){toast(t('docLimit'));return;}
  if(kind==='rental_contract'&&!car){toast(t('selectFirst'));return;}
  const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
  const fileId=crypto.randomUUID();
- const path=`${user.id}/${kind}/${kind==='rental_contract'?car+'/':''}${fileId}.${ext}`;
+ const authUserId=user.id,driverProfileId=me.id;
+ const path=`${authUserId}/${kind}/${kind==='rental_contract'?car+'/':''}${fileId}.${ext}`;
+ let uploaded=false;
  docBusy=true; f.disabled=true;
  try{
    const {error:uploadError}=await sb.storage.from('nikcar-driver-docs').upload(path,file,{cacheControl:'0',upsert:false,contentType:file.type});
    if(uploadError)throw uploadError;
-   const old=docFor(kind,me.id,kind==='rental_contract'?car:null);
-   const query=old?sb.from('driver_documents').update({object_path:path}).eq('id',old.id):sb.from('driver_documents').insert({driver_id:me.id,car_id:kind==='rental_contract'?car:null,kind,object_path:path});
+   uploaded=true;
+   if(isOffline())throw new Error(offlineMessage());
+   if(user?.id!==authUserId||me?.id!==driverProfileId)throw new Error(lang==='uk'?'Акаунт змінився під час завантаження. Повторіть спробу.':'Account changed during upload. Please try again.');
+   const old=docFor(kind,driverProfileId,kind==='rental_contract'?car:null);
+   const query=old?sb.from('driver_documents').update({object_path:path}).eq('id',old.id):sb.from('driver_documents').insert({driver_id:driverProfileId,car_id:kind==='rental_contract'?car:null,kind,object_path:path});
    const {error:saveError}=await query;
    if(saveError)throw saveError;
    toast(t('docUploadDone'));await load();
- }catch(error){toast(error.message||String(error));}
+ }catch(error){
+    if(uploaded){
+     // Only a just-uploaded, unlinked file may be removed. Database RLS protects linked files.
+     try{
+      const {error:cleanupError}=await sb.storage.from('nikcar-driver-docs').remove([path]);
+      if(cleanupError)throw cleanupError;
+     }catch(_cleanupError){
+      toast(lang==='uk'?'Не вдалося завершити завантаження. Файл міг залишитися без прив’язки; повідомте адміністратора та оновіть сторінку.':'Upload could not be completed. An unlinked file may remain; contact the administrator and refresh.');
+      return;
+     }
+    }
+    toast(error.message||String(error));
+ }
  finally{docBusy=false;f.disabled=false;}
 });
 document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.id==='driver-filter'){const needle=evt.target.value.toLowerCase().trim();document.querySelectorAll('.driver-card').forEach(el=>{el.hidden=!(el.dataset.search||'').includes(needle)})}});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form)form.dataset.dirty='1';if(evt.target.matches('select[data-action="language"]')){lang=evt.target.value==='en'?'en':'uk';localStorage.setItem('nikcar-lang',lang);render();}});
 document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-form','new-car','edit-car-form','announcement-form','chat-send','sos-create','profile-update','cash-payment-form','repair-create','repair-add-part','new-password-form'].includes(form.id))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
+ if(isOffline())throw new Error(offlineMessage());
  if(form.id==='auth-form'){const email=String(f.get('email')||'').trim().toLowerCase(),password=String(f.get('password')||'');lastAuthEmail=email;
   if(mode==='reset'){assertAuthEmailCooldown();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:authRedirect});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=lang==='uk'?'Якщо адреса зареєстрована, лист для відновлення надіслано. Перевірте «Спам».':'If this address is registered, a recovery link has been sent. Check spam too.';render();return;}
   if(mode==='signup'){const repeated=String(f.get('confirm_password')||'');if(password.length<10||password.length>128)throw Error(lang==='uk'?'Пароль повинен містити 10–128 символів.':'Password must have 10–128 characters.');if(password!==repeated)throw Error(lang==='uk'?'Паролі не збігаються.':'Passwords do not match.');assertAuthEmailCooldown();const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:authRedirect,data:{full_name:String(f.get('fullname')||'').trim()}}});if(error)throw error;markAuthEmailSent();authNoticeIsError=false;authNotice=data?.session?(lang==='uk'?'Обліковий запис створено.':'Account created.'):(lang==='uk'?'Якщо реєстрація можлива, ви отримаєте лист підтвердження. Перевірте «Спам».':'If registration is available, you will receive a confirmation email. Check spam too.');mode='signin';render();return;}
@@ -374,7 +406,7 @@ document.addEventListener('submit',async evt=>{const form=evt.target;if(!['auth-
  if(form.id==='chat-send'){await mutation(sb.from('chat_messages').insert({sender_id:me.id,body:String(f.get('text')).trim()}));return;}
  if(form.id==='sos-create'){await mutation(sb.from('sos_requests').insert({requester_id:me.id,category:f.get('category'),note:String(f.get('note')||'').trim(),location_text:String(f.get('location')||'').trim()}));return;}
  if(form.id==='profile-update'){await mutation(sb.from('profiles').update({full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()}).eq('id',me.id));return;}
- }catch(err){if(form.id==='auth-form'||form.id==='new-password-form'){const op=form.id==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;render();}else toast(err.message||err);}finally{if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
+ }catch(err){if(form.id==='auth-form'||form.id==='new-password-form'){const op=form.id==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(err.message||err);}finally{if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
 (async()=>{if(!configured){render();return;}try{
  const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
  sb=mod.createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
