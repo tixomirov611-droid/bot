@@ -246,10 +246,12 @@ function render(){document.documentElement.lang=lang;if(!configured){root.innerH
 async function load({preserveDraft=false}={}){
  if(!sb||!user){me=null;records=emptyRecords();render();return;}
  const expectedUserId=user.id,version=++loadVersion;
+ let accessChanged=false;
  try{
   const {data,error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at').eq('user_id',expectedUserId).maybeSingle();
   if(version!==loadVersion||user?.id!==expectedUserId)return;
   if(error)throw error;
+  accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
   me=data;
   if(me&&isOwner()&&!sessionInitialized)page='dashboard';
   sessionInitialized=true;
@@ -262,11 +264,11 @@ async function load({preserveDraft=false}={}){
    for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
    records=nextRecords;
   }else records=emptyRecords();
-  if(!preserveDraft||forceMutationRefresh||!hasUnsavedForm())render();
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm())render();
  }catch(err){
   if(version!==loadVersion||user?.id!==expectedUserId)return;
   toast(`${t('systemError')}: ${err.message||err}`);
-  if(!preserveDraft||forceMutationRefresh||!hasUnsavedForm())render();
+  if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm())render();
  }
 }
 async function mutation(promise,success){
