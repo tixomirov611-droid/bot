@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {dailyRentPosting,confirmedPaymentEntry,rentalBalance,dayNumber} from './v085-accounting.mjs';
+const free={id:'free1',driver_id:'d1',vehicle_id:'c1',date_from:'2026-11-10',date_to:'2026-11-12',status:'approved'};
+test('free day zeroes only fresh rent',()=>{const x=dailyRentPosting({rentalId:'r1',driverId:'d1',carId:'c1',day:'2026-11-11',dailyRate:'1000.00',approvedDaysOff:[free]}); assert.equal(x.chargeCents,0);assert.equal(x.discountCents,100000)});
+test('same rental and day cannot post twice',()=>{const x=dailyRentPosting({rentalId:'r1',driverId:'d1',carId:'c1',day:'2026-11-11',dailyRate:1000,approvedDaysOff:[free]});assert.equal(dailyRentPosting({rentalId:'r1',driverId:'d1',carId:'c1',day:'2026-11-11',dailyRate:1000,postedEntries:[x]}),null)});
+test('cancellation before posting restores only new accrual',()=>assert.equal(dailyRentPosting({rentalId:'r1',driverId:'d1',carId:'c1',day:'2026-11-11',dailyRate:1000,approvedDaysOff:[{...free,status:'cancelled'}]}).chargeCents,100000));
+test('other driver cannot receive waiver',()=>assert.equal(dailyRentPosting({rentalId:'r1',driverId:'d2',carId:'c1',day:'2026-11-11',dailyRate:1000,approvedDaysOff:[free]}).chargeCents,100000));
+test('opening debt survives zero-rent days',()=>assert.equal(rentalBalance({openingDebtCents:2200000,entries:[{sourceKey:'rent:r1:2026-11-11',amountCents:0}]}).balanceCents,2200000));
+test('only confirmed payment reduces balance',()=>{assert.equal(confirmedPaymentEntry({id:'p',status:'declared',amount:120}),null);assert.equal(rentalBalance({openingDebtCents:2200000,entries:[confirmedPaymentEntry({id:'p',status:'confirmed',amount:'120.50'})]}).balanceCents,2187950)});
+test('duplicate ledger credits prohibited',()=>{const p=confirmedPaymentEntry({id:'p',status:'confirmed',amount:10}); assert.throws(()=>rentalBalance({entries:[p,p]}))});
+test('overlapping approvals rejected',()=>assert.throws(()=>dailyRentPosting({rentalId:'r1',driverId:'d1',carId:'c1',day:'2026-11-11',dailyRate:100,approvedDaysOff:[free,{...free,id:'free2'}]})));
+test('invalid dates rejected',()=>assert.throws(()=>dayNumber('2026-02-30')));
