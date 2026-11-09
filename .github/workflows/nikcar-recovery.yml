@@ -1,0 +1,28 @@
+name: NikCar Recovery Snapshot
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create versioned source snapshot and recovery manifest
+        shell: bash
+        run: |
+          mkdir -p recovery-output
+          printf 'NikCar source recovery snapshot\nCommit: %s\nDate UTC: %s\nRepository: %s\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" "$GITHUB_REPOSITORY" > recovery-output/RECOVERY_INFO.txt
+          git log -15 --date=iso --pretty=format:'%h %ad %s' > recovery-output/RECENT_RELEASES.txt
+          git archive --format=zip --output=recovery-output/NikCar_Source_${GITHUB_SHA:0:12}.zip HEAD
+          sha256sum recovery-output/*.zip > recovery-output/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NikCar-Recovery-${{ github.sha }}
+          path: recovery-output/
+          retention-days: 90
+          if-no-files-found: error
