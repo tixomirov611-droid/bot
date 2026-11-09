@@ -445,7 +445,7 @@ function fuelPriceSection(){
  const priceText=price?money(price):'Не встановлена';
  const history=isOwner()?(records.fleet_fuel_price_history||[]).slice(0,8).map(h=>'<div class="small">'+d(h.changed_at)+' · '+(h.old_price_uah?money(h.old_price_uah):'—')+' → '+money(h.new_price_uah)+'</div>').join(''):'';
  const form=isOwner()?'<form class="form" id="fuel-price-form"><label class="field">Нова ціна дизеля, ₴/літр<input name="price" type="number" min="0.01" max="1000" step="0.01" required value="'+e(price||'')+'"></label><p class="small">Зміна застосовується до нових покупок. Уже оплачені Fuel Points не перераховуються.</p><button class="btn" type="submit">Попередній перегляд ціни</button></form>':'';
- return '<section class="card"><h2>⛽ Fuel Points</h2><div class="line"><b>1 FP = 1 літр дизеля</b><b>'+priceText+' / л</b></div>'+form+(history?'<h3>Історія зміни тарифу</h3>'+history:'')+'</section>';
+ return '<section class="card"><div class="point-balance-hero"><div class="point-title"><img src="./icon.svg" alt="NikCar"> Point Balance</div><div class="point-total">1 Point = 1 ₴</div><div class="point-details">Доступні літри перераховуються за поточною ціною</div></div><h2>⛽ Тариф дизеля</h2><div class="line"><b>1 FP = 1 літр дизеля</b><b>'+priceText+' / л</b></div>'+form+(history?'<h3>Історія зміни тарифу</h3>'+history:'')+'</section>';
 }
 const notificationDefaults={ai:true,fines:true,fuel:true,payments:true,quiet:true,service:true,sound:true,vibrate:true};
 function notificationKey(){return 'nikcar-notify-v1-'+(user?.id||'guest');}
