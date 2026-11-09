@@ -102,7 +102,7 @@ const t=k=>ADDITIONS[lang]?.[k]||UICONSOLE[lang]?.[k]||TRANSLATIONS[lang][k]||k;
 const e=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const d=x=>x?new Date(x).toLocaleString(lang==='uk'?'uk-UA':'en-GB',{dateStyle:'short',timeStyle:'short'}):'—';
 const money=x=>Number(x||0).toLocaleString(lang==='uk'?'uk-UA':'en-GB')+' ₴';
-const emptyRecords=()=>({cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[],fleet_service_events:[],fleet_files:[],fleet_inspections:[],fleet_damage_reviews:[],fleet_tracking_assets:[],fleet_fines:[],rental_damage_photos:[],fleet_fuel_price:[],fleet_fuel_price_history:[],driver_days_off:[],days_off_notifications:[]});
+const emptyRecords=()=>({driver_days_off:[],days_off_notifications:[],cars:[],rental_requests:[],chat_messages:[],sos_requests:[],profiles:[],driver_documents:[],announcements:[],payment_claims:[],repair_jobs:[],repair_parts:[],expense_entries:[],fleet_service_events:[],fleet_files:[],fleet_inspections:[],fleet_damage_reviews:[],fleet_tracking_assets:[],fleet_fines:[],rental_damage_photos:[],fleet_fuel_price:[],fleet_fuel_price_history:[],driver_days_off:[],days_off_notifications:[]});
 let sb=null,user=null,me=null,records=emptyRecords();
 const driverTabs=[['cars','🚙'],['announcements','◉'],['requests','▤'],['payments','₴'],['points','⛽'],['notifications','🔔'],['documents','📄'],['chat','💬'],['sos','🆘'],['account','◯']];
 const ownerTabs=[['dashboard','⌂'],['nikcar-ai','✦'],['tracking','⌖'],['cars','🚙'],['drivers','♙'],['requests','▤'],['payments','₴'],['points','⛽'],['notifications','🔔'],['days-off','📅'],['settings','⚙'],['repairs','⚒'],['documents','📄'],['announcements','◉'],['chat','💬'],['sos','🆘'],['account','◯']];
@@ -120,7 +120,7 @@ const actionGroups={
 };
 const protectedActions=new Set([
  'signout','resend-confirm','submit-doc-choice','open-doc',
- 'approve-request','reject-request','cancel-request',
+ 'approve-request','reject-request','cancel-request','cancel-days-off',
  'confirm-payment','reject-payment','post-repair','remove-part',
  'set-driver-access','delete-announcement',
  'claim-sos','release-sos','finish-sos','cancel-sos'
@@ -221,11 +221,17 @@ function authPage(){
 }
 function daysOffHistory(){return '<section class="card"><h3>Історія вихідних</h3>'+((records.driver_days_off||[]).map(o=>'<div class="line"><div>'+e(carName(o.vehicle_id))+' · '+e(o.date_from)+' — '+e(o.date_to)+' · '+e(o.status==='approved'?'Підтверджено':'Скасовано')+'</div>'+(isOwner()&&o.status==='approved'?'<button class="btn secondary tiny" data-action="cancel-days-off" data-id="'+e(o.id)+'">Скасувати</button>':'')+'</div>').join('')||'<p>Записів немає</p>')+'</section>'; }
 function daysOffPage(){
- if(!isOwner())return '<div class="card">Оформлення вихідних доступне лише уповноваженим співробітникам.</div>';
- const cars=records.cars||[];
- const options=cars.map(car=>'<option value="'+e(car.id)+'">'+e(car.model)+' · '+e(car.plate)+'</option>').join('');
- return '<section class="card"><h2>📅 Безоплатні вихідні водія</h2><p class="small">Обирайте період до 366 календарних днів. Після серверного підтвердження буде створено запис для перерахунку оренди та сповіщень.</p><form id="days-off-form"><label>Автомобіль<select name="car" required>'+options+'</select></label><label>Початок<input name="from" type="date" required></label><label>Кінець<input name="to" type="date" required></label><label>Причина<input name="reason" maxlength="500" placeholder="Необов’язково"></label><button class="btn" type="submit">Підтвердити вихідні</button></form><p class="small">Підтвердження фіксує вихідні. Автоматичний облік нарахувань оренди ще не підключено.</p></section>'+daysOffHistory();
-}
+  if(!isOwner())return '<div class="card">Оформлення вихідних доступне лише уповноваженим співробітникам.</div>';
+  const cars=records.cars||[];
+  const options=cars.map(car=>'<option value="'+e(car.id)+'">'+e(car.model)+' · '+e(car.plate)+'</option>').join('');
+  const items=(records.driver_days_off||[]).slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  const rows=items.map(item=>{
+   const active=item.status==='approved',dates=e(item.date_from)+' — '+e(item.date_to);
+   const action=active?'<button type="button" class="btn secondary tiny" data-action="cancel-days-off" data-id="'+e(item.id)+'">Скасувати</button>':'';
+   return '<div class="line"><div><b>'+e(carName(item.vehicle_id))+' · '+dates+'</b><div class="small">'+e(name(item.driver_id))+' · '+(active?'Підтверджено':'Скасовано')+'</div>'+(item.reason?'<div class="small">'+e(item.reason)+'</div>':'')+'</div>'+action+'</div>';
+  }).join('');
+  return '<section class="card"><h2>📅 Безоплатні вихідні водія</h2><p class="small">Обирайте період без обмеження кількості вихідних. Рішення зберігається на сервері; повторні періоди блокуються базою.</p><form id="days-off-form"><label>Автомобіль<select name="car" required>'+options+'</select></label><label>Початок<input name="from" type="date" required></label><label>Кінець<input name="to" type="date" required></label><label>Причина<input name="reason" maxlength="500" placeholder="Необов’язково"></label><button class="btn" type="submit">Підтвердити вихідні</button></form><p class="small">Фінансовий журнал нарахувань ще не підключено: цей запис не списує борги та не змінює вже проведені платежі.</p></section><section class="card"><h2>Історія вихідних</h2>'+(rows||'<p class="small">Вихідних ще немає.</p>')+'</section>';
+ }
 function settingsPage(){
  if(!isOwner())return '<div class="card">Налаштування доступні власнику</div>';
  return '<section class="card"><h2>⚙ Налаштування NikCar</h2><p class="small">API та інтеграції, фінансові параметри, права доступу, оренда та сповіщення.</p><div class="row"><button class="btn secondary" data-action="nav" data-page="api">🔑 API та інтеграції</button><button class="btn secondary" data-action="nav" data-page="notifications">🔔 Сповіщення</button><button class="btn secondary" data-action="nav" data-page="account">👤 Обліковий запис</button></div><p class="small">Фінансові налаштування, ролі та безоплатні вихідні будуть активовані після перевірки серверних прав. Секретні API-ключі не вводьте в браузер.</p></section>';
@@ -502,7 +508,7 @@ function fuelPriceSection(){
  const form=isOwner()?'<form class="form" id="fuel-price-form"><label class="field">Нова ціна дизеля, ₴/літр<input name="price" type="number" min="0.01" max="1000" step="0.01" required value="'+e(price||'')+'"></label><p class="small">Баланс Points зберігається у гривневому еквіваленті. Після зміни ціни доступні літри перераховуються. Історія виконаних заправок не змінюється.</p><button class="btn" type="submit">Попередній перегляд ціни</button></form>':'';
  return '<section class="card"><div class="point-balance-hero"><div class="point-title"><img src="./icon.svg" alt="NikCar"> Point Balance</div><div class="point-total">1 Point = 1 ₴</div><div class="point-details">Доступні літри перераховуються за поточною ціною</div></div><h2>⛽ Тариф дизеля</h2><div class="line"><b>1 Point = 1 гривня</b><b>'+priceText+' / л</b></div>'+form+(history?'<h3>Історія зміни тарифу</h3>'+history:'')+'</section>';
 }
-const notificationDefaults={ai:true,fines:true,fuel:true,payments:true,quiet:true,service:true,sound:true,vibrate:true};
+const notificationDefaults={ai:true,fines:true,fuel:true,payments:true,daysOff:true,quiet:true,service:true,sound:true,vibrate:true};
 function notificationKey(){return 'nikcar-notify-v1-'+(user?.id||'guest');}
 function notificationState(){try{const x=JSON.parse(localStorage.getItem(notificationKey())||'{}');return {settings:{...notificationDefaults,...x.settings},read:Array.isArray(x.read)?x.read:[],seen:Array.isArray(x.seen)?x.seen:[]};}catch{return {settings:{...notificationDefaults},read:[],seen:[]};}}
 function saveNotificationState(x){try{localStorage.setItem(notificationKey(),JSON.stringify({...x,read:x.read.slice(-300),seen:x.seen.slice(-300)}));}catch{}}
@@ -514,7 +520,8 @@ function smartEvents(){
  for(const p of records.payment_claims||[]){if(!mine(p))continue;if(isOwner()&&p.status==='declared')add('payment-'+p.id,'payments','💳 Платіж очікує перевірки',name(p.driver_id)+' · '+money(p.amount),'payments',p.created_at,'important');if(!isOwner()&&p.status==='confirmed')add('payment-ok-'+p.id,'payments','✅ Платіж підтверджено',money(p.amount)+' зараховано власником','payments',p.confirmed_at||p.created_at);}
  for(const x of records.fleet_service_events||[]){if(!isOwner()||!x.due_date||x.completed_at)continue;const days=Math.ceil((new Date(x.due_date+'T23:59:59').getTime()-Date.now())/86400000);if(days<=7)add('service-'+x.id,'service','🔧 '+(days<0?'Прострочено ТО':'Наближається термін ТО'),carName(x.car_id)+' · '+x.title,'cars',x.created_at,days<0?'important':'normal');}
  if(isOwner())for(const x of records.fleet_damage_reviews||[]){if(x.owner_decision)continue;add('ai-'+x.id,'ai','✨ AI-огляд очікує рішення',carName(x.car_id),'nikcar-ai',x.created_at);}
- const fuel=records.fleet_fuel_price?.[0];if(fuel?.price_uah)add('fuel-'+fuel.updated_at,'fuel','⛽ Тариф Fuel Points',money(fuel.price_uah)+' / літр','payments',fuel.updated_at);
+ for(const item of records.days_off_notifications||[]){const day=(records.driver_days_off||[]).find(x=>x.id===item.day_off_id);const approved=item.kind==='approved';add('days-off-'+item.id,'daysOff',approved?'📅 Вихідні підтверджено':'📅 Вихідні скасовано',day?carName(day.vehicle_id)+' · '+day.date_from+' — '+day.date_to:'Оновлено статус безоплатних вихідних',isOwner()?'days-off':'notifications',item.created_at);}
+  const fuel=records.fleet_fuel_price?.[0];if(fuel?.price_uah)add('fuel-'+fuel.updated_at,'fuel','⛽ Тариф Fuel Points',money(fuel.price_uah)+' / літр','payments',fuel.updated_at);
  return out.filter(x=>notificationState().settings[x.category]).sort((a,b)=>String(b.time).localeCompare(String(a.time))).slice(0,100);
 }
 function quietNow(){const h=new Date().getHours();return h>=23||h<8;}
@@ -536,7 +543,7 @@ async function showNikcarSystemNotification(title,body,tag){
 function notificationsPage(){
  const st=notificationState(),events=smartEvents(),unread=events.filter(x=>!st.read.includes(x.id)).length;
  const entries=events.map(x=>'<div class="line"><div><b>'+e(x.title)+'</b><div class="small">'+e(x.body)+'</div><div class="small">'+e(x.time?d(x.time):'')+(st.read.includes(x.id)?' · Переглянуто':' · Нове')+'</div></div><button class="btn secondary tiny" data-action="notification-open" data-id="'+e(x.id)+'">Відкрити</button></div>').join('');
- const options=[['ai','NikCar AI'],['fines','Штрафи'],['fuel','Fuel Points'],['payments','Платежі'],['service','ТО та страхування'],['quiet','Тихі години 23:00–08:00'],['sound','Звуки'],['vibrate','Вібрація']];
+ const options=[['ai','NikCar AI'],['fines','Штрафи'],['fuel','Fuel Points'],['payments','Платежі'],['service','ТО та страхування'],['daysOff','Безоплатні вихідні'],['quiet','Тихі години 23:00–08:00'],['sound','Звуки'],['vibrate','Вібрація']];
  const toggles=options.map(([k,label])=>'<label class="line"><span>'+label+'</span><input type="checkbox" data-notify-setting="'+k+'" '+(st.settings[k]?'checked':'')+'></label>').join('');
  return '<div class="cards"><section class="card"><h2>🔔 Центр сповіщень · '+unread+' нових</h2><p class="small">Події з даних NikCar. Системні сповіщення працюють, коли застосунок активний (навіть у фоновій вкладці). Для повідомлень після повного закриття застосунку потрібна серверна Web Push доставка.</p><div class="actions"><button class="btn secondary tiny" data-action="notification-read-all">Прочитати всі</button><button class="btn secondary tiny" data-action="notification-permission">Дозволити сповіщення</button><button class="btn secondary tiny" data-action="notification-test-sound">Тест звуку</button><button class="btn secondary tiny" data-action="notification-test-push">Тест системного сповіщення</button></div>'+entries+(entries?'':'<p>Нових подій немає.</p>')+'</section><section class="card"><h2>Налаштування</h2>'+toggles+'</section></div>';
 }
@@ -751,10 +758,10 @@ async function load({preserveDraft=false}={}){
   if(me&&activeMember())startChatPresence();
   sessionInitialized=true;
   if(me){
-   const targets=[sb.from('driver_days_off').select('*').order('created_at',{ascending:false}).limit(500),sb.from('days_off_notifications').select('*').order('created_at',{ascending:false}).limit(100),sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('fleet_service_events').select('*').order('created_at',{ascending:false}).limit(500),sb.from('fleet_files').select('*').order('created_at',{ascending:false}).limit(250),sb.from('fleet_inspections').select('*').order('inspected_at',{ascending:false}).limit(250),sb.from('fleet_damage_reviews').select('*').order('created_at',{ascending:false}).limit(100),sb.from('fleet_tracking_assets').select('*').order('created_at',{ascending:false}).limit(300),sb.from('fleet_fines').select('*').order('created_at',{ascending:false}).limit(300),sb.from('rental_damage_photos').select('*').order('created_at',{ascending:false}).limit(300),sb.from('fleet_fuel_price').select('*'),sb.from('fleet_fuel_price_history').select('*').order('changed_at',{ascending:false}).limit(30),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,user_id,full_name,phone,role,access,avatar_path'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80)];
+   const targets=[sb.from('driver_days_off').select('*').order('created_at',{ascending:false}).limit(500),sb.from('days_off_notifications').select('*').order('created_at',{ascending:false}).limit(100),sb.from('payment_claims').select('*').order('created_at',{ascending:false}).limit(250),sb.from('repair_jobs').select('*').order('created_at',{ascending:false}).limit(150),sb.from('repair_parts').select('*').limit(500),sb.from('expense_entries').select('*').limit(200),sb.from('fleet_service_events').select('*').order('created_at',{ascending:false}).limit(500),sb.from('fleet_files').select('*').order('created_at',{ascending:false}).limit(250),sb.from('fleet_inspections').select('*').order('inspected_at',{ascending:false}).limit(250),sb.from('fleet_damage_reviews').select('*').order('created_at',{ascending:false}).limit(100),sb.from('fleet_tracking_assets').select('*').order('created_at',{ascending:false}).limit(300),sb.from('fleet_fines').select('*').order('created_at',{ascending:false}).limit(300),sb.from('rental_damage_photos').select('*').order('created_at',{ascending:false}).limit(300),sb.from('fleet_fuel_price').select('*'),sb.from('fleet_fuel_price_history').select('*').order('changed_at',{ascending:false}).limit(30),sb.from('cars').select('*').order('model'),sb.from('rental_requests').select('*').order('created_at',{ascending:false}).limit(150),sb.from('chat_messages').select('*').order('created_at',{ascending:true}).limit(100),sb.from('sos_requests').select('*').order('created_at',{ascending:false}).limit(100),sb.from('profiles').select('id,user_id,full_name,phone,role,access,avatar_path'),sb.from('driver_documents').select('id,driver_id,car_id,kind,object_path,created_at'),sb.from('announcements').select('*').order('pinned',{ascending:false}).order('created_at',{ascending:false}).limit(80),sb.from('driver_days_off').select('*').order('created_at',{ascending:false}).limit(250),sb.from('days_off_notifications').select('*').order('created_at',{ascending:false}).limit(250)];
    const loaded=await Promise.all(targets);
    if(version!==loadVersion||user?.id!==expectedUserId)return;
-   const keys=['driver_days_off','days_off_notifications','payment_claims','repair_jobs','repair_parts','expense_entries','fleet_service_events','fleet_files','fleet_inspections','fleet_damage_reviews','fleet_tracking_assets','fleet_fines','rental_damage_photos','fleet_fuel_price','fleet_fuel_price_history','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements'];
+   const keys=['driver_days_off','days_off_notifications','payment_claims','repair_jobs','repair_parts','expense_entries','fleet_service_events','fleet_files','fleet_inspections','fleet_damage_reviews','fleet_tracking_assets','fleet_fines','rental_damage_photos','fleet_fuel_price','fleet_fuel_price_history','cars','rental_requests','chat_messages','sos_requests','profiles','driver_documents','announcements','driver_days_off','days_off_notifications'];
    const nextRecords=emptyRecords();
    for(let i=0;i<loaded.length;i++){if(loaded[i].error)throw loaded[i].error;nextRecords[keys[i]]=loaded[i].data||[];}
    records=nextRecords;
@@ -778,7 +785,7 @@ async function mutation(promise,success){
  await load();
  return true;
 }
-async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='point-refresh'){await loadPoints();return;}
+async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(a==='cancel-days-off'){if(!isOwner()||!id||!window.confirm('Скасувати безоплатні вихідні? Майбутні дні знову підлягатимуть нарахуванню після підключення фінансового журналу.'))return;const {error}=await sb.rpc('nikcar_cancel_days_off_v085',{p_id:id});if(error)throw error;forceMutationRefresh++;await load();toast('Вихідні скасовано');return;}if(a==='point-refresh'){await loadPoints();return;}
 if(a==='api-refresh'){await refreshApiKeys();return;}
 if(a==='api-copy'){if(apiNewSecret){await navigator.clipboard.writeText(apiNewSecret);toast('Ключ скопійовано');}return;}
 if(a==='api-revoke'){if(!isOwner()||!window.confirm('Відкликати ключ? Інтеграція втратить доступ.'))return;await apiCall('revoke','POST',{id});apiKeyList=null;await refreshApiKeys();toast('Ключ відкликано');return;}
@@ -1136,7 +1143,7 @@ if(form.id==='fuel-price-form'){
  if(!user&&recoveryMode){setRecoveryMode(false);mode='reset';authNotice=lang==='uk'?'Посилання відновлення недійсне або термін його дії минув. Запитайте новий лист.':'Recovery link is invalid or expired. Request a new email.';}
  await load();
  void checkOAuthAvailability();
- for(const table of ['chat_messages','sos_requests','rental_requests','announcements','payment_claims','repair_jobs'])
+ for(const table of ['chat_messages','sos_requests','rental_requests','announcements','payment_claims','repair_jobs','driver_days_off','days_off_notifications'])
   sb.channel(`nikcar-${table}`).on('postgres_changes',{event:'*',schema:'public',table},()=>{if(user&&!recoveryMode)void load({preserveDraft:true});}).subscribe();
  }catch(err){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('systemError')}</h1><p>${e(err.message||err)}</p></div></div>`;}})();
 // v0.85: Submit only through authenticated RPC; never write directly to protected tables.
