@@ -9,10 +9,13 @@
   "theme_color": "#101116",
   "icons": [
     {
-      "src": "/icon.svg?v=0.83.0",
+      "src": "/icon.svg?v=0.92.0",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "id": "/",
+  "orientation": "any",
+  "lang": "uk"
 }
