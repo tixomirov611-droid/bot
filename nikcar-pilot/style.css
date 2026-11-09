@@ -529,3 +529,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .car-checks{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0}.car-checks>.small:first-child{flex-basis:100%}.car-checks>.small:last-child{flex-basis:100%}
 
 .vehicle-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px}.vehicle-details>div{display:flex;flex-direction:column;gap:4px;min-width:0}.vehicle-details span{font-size:11px;opacity:.72}.vehicle-details b{font-size:14px;overflow-wrap:anywhere}.vehicle-details .vehicle-vin{grid-column:1/-1}.vehicle-vin b{font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.3px}
+
+.tracking-rename-form{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px}.tracking-rename-form input{min-width:130px;max-width:230px;flex:1;padding:8px;border-radius:8px;border:1px solid var(--line)}
