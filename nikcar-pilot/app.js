@@ -581,7 +581,7 @@ function pointsPage(){
 function weeklyRentPanel(){
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const cars=isOwner()?records.cars:records.cars.filter(c=>records.rental_requests.some(r=>r.car_id===c.id&&r.driver_id===me.id&&r.handed_over_at));
- return `<section class="card"><h2>Оренда за тиждень</h2><p class="small">Оберіть перший день розрахункового тижня. За 7 днів віднімаємо підтверджені безоплатні вихідні. Старі борги та платежі не змінюються.</p><form id="weekly-rent-form" class="form"><label class="field">Автомобіль<select name="car" required>${cars.map(c=>`<option value="${e(c.id)}">${e(c.model)} · ${e(c.plate)}</option>`).join('')}</select></label><label class="field">Перший день тижня<input type="date" name="start" required value="${e(today)}"></label><button class="btn" type="submit">Розрахувати тиждень</button></form><div id="weekly-rent-result" aria-live="polite"></div></section>`;
+ return `<section class="card"><h2>Оренда за тиждень</h2><p class="small">Оренда нараховується автоматично щопонеділка. Термін оплати — понеділок до 12:00 за Києвом. Нижче можна перевірити розрахунок за обраний тиждень.</p><form id="weekly-rent-form" class="form"><label class="field">Автомобіль<select name="car" required>${cars.map(c=>`<option value="${e(c.id)}">${e(c.model)} · ${e(c.plate)}</option>`).join('')}</select></label><label class="field">Перший день тижня<input type="date" name="start" required value="${e(today)}"></label><button class="btn" type="submit">Розрахувати тиждень</button></form><div id="weekly-rent-result" aria-live="polite"></div></section>`;
 }
 async function calculateWeeklyRent(form){
  const output=document.getElementById('weekly-rent-result'),button=form.querySelector('button[type=submit]');
@@ -604,6 +604,15 @@ async function calculateWeeklyRent(form){
  finally{button.disabled=false;}
 }
 
+async function nikcarRentRefresh(){
+ if(!isOwner()||!sb||!user)return;
+ try{const {error}=await sb.rpc('nikcar_refresh_weekly_rent_v087');if(error)throw error;
+ const {data,error:readError}=await sb.from('nikcar_weekly_rent').select('week_start,due_at,amount_due,status,car_id,driver_id').order('week_start',{ascending:false}).limit(30);
+ if(readError)throw readError;
+ const el=document.getElementById('nikcar-rent-ledger');if(!el)return;
+ el.innerHTML=(data||[]).length?data.map(x=>'<div class="line"><div><b>'+e(carName(x.car_id))+'</b> · '+e(x.week_start)+'<div class="small">'+e(name(x.driver_id))+' · '+(x.status==='overdue'?'🔴 Прострочено':x.status==='paid'?'Сплачено':'Очікує оплати')+' · до понеділка 12:00</div></div><b>'+money(x.amount_due)+'</b></div>').join(''):'<p class="small">Активних нарахувань поки немає.</p>';
+ }catch(err){const el=document.getElementById('nikcar-rent-ledger');if(el)el.textContent='Не вдалося оновити нарахування: '+(err.message||err);}
+}
 function paymentsPage(){
  const list=records.payment_claims.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
  const rows=list.map(p=>`<div class="line"><div><b>${e(name(p.driver_id))}</b> · ${money(p.amount)}<div class="small">${e(carName(records.rental_requests.find(r=>r.id===p.rental_request_id)?.car_id))} · ${e(t(p.method))} · ${d(p.created_at)}</div>${p.driver_note?`<div class="small">${e(p.driver_note)}</div>`:''}${p.owner_note?`<div class="small">${e(p.owner_note)}</div>`:''}<div>${status(p.status)}</div></div>${isOwner()&&p.status==='declared'?`<div class="actions"><button class="btn tiny" data-action="confirm-payment" data-id="${e(p.id)}">${t('confirmPayment')}</button><button class="btn secondary tiny" data-action="reject-payment" data-id="${e(p.id)}">${t('rejectPayment')}</button></div>`:''}</div>`).join('');
