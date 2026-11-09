@@ -328,7 +328,7 @@ function aiExpenseAnomalies(days=30){
 }
 function nikcarAiRespond(question){
  const q=String(question||'').trim().toLowerCase();
- if(!q)return 'Введіть запитання.';
+ if(!q)return 'Введіть запитання.';if(/правил|пам.?ят|запомн|памят|інструкц/.test(q))return aiMemory.length?'Збережені власником правила: '+aiMemory.map(x=>x.note).join('; '):'У памʼяті немає збережених правил. Додайте їх у блоці «Памʼять та актуалізація».';
  const cars=records.cars||[],payments=records.payment_claims||[],expenses=records.expense_entries||[],repairs=records.repair_jobs||[];
  const sum=items=>items.reduce((v,x)=>v+(Number(x.amount)||0),0);
  if(/аномал|незвич|подозр|підозр/.test(q)){const flagged=aiExpenseAnomalies();return flagged.length?'Потенційно незвичні витрати за 30 днів: '+flagged.map(x=>carName(x.car_id)+' — '+money(x.amount)+' ('+x.category+')').join('; ')+'. Перевірте вручну.':'За останні 30 днів значних відхилень за правилом 3× медіани не знайдено. Для оцінки потрібно щонайменше 4 записи на категорію та авто.';}
