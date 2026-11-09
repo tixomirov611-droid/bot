@@ -33,3 +33,18 @@ export function rentAdjustment({from,to,dailyRate,approved=[]}) {
  return Math.round(freeDaysWithin(from,to,approved)*dailyRate*100)/100;
 }
 export function mayApproveDaysOff(role){return role==='owner'||role==='admin';}
+
+// Recalculate a seven-day bill from source dates, never subtract from a
+// previously discounted bill. Existing debt is deliberately outside this API.
+export function weeklyRent({vehicleId,weekStart,dailyRate,approved=[]}) {
+ if(!vehicleId) throw new Error('Vehicle is required');
+ if(!Number.isFinite(dailyRate)||dailyRate<0) throw new Error('Invalid daily rate');
+ const start=isoDay(weekStart);
+ const weekEnd=new Date((start+6)*86400000).toISOString().slice(0,10);
+ const freeDays=freeDaysWithin(weekStart,weekEnd,approved.filter(x=>x.vehicle_id===vehicleId));
+ const dailyCents=Math.round(dailyRate*100);
+ if(!Number.isSafeInteger(dailyCents*7)) throw new Error('Daily rate is too large');
+ return {weekStart,weekEnd,freeDays,billableDays:7-freeDays,
+  gross:dailyCents*7/100,discount:dailyCents*freeDays/100,
+  due:dailyCents*(7-freeDays)/100};
+}
