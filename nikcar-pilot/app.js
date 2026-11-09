@@ -541,7 +541,7 @@ function requestManualCarYear(form){
 function captureNewCarDraft(){
  const form=document.getElementById('new-car');
  if(!form?.elements?.namedItem||!user||!isOwner())return;
- newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
+ newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
  saveNewCarDraft();
 }
 function clearNewCarForm(){
