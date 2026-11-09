@@ -5,14 +5,20 @@ const photoUrlCache=new Map();
 async function hydratePrivatePhotos(){
  if(!sb)return;
  const images=[...document.querySelectorAll('img[data-photo-path]')];
- await Promise.all(images.map(async img=>{
-  const path=img.dataset.photoPath;if(!path)return;
-  try{
-   let url=photoUrlCache.get(path);
-   if(!url){const result=await sb.storage.from('nikcar-photos').createSignedUrl(path,3600);if(result.error)throw result.error;url=result.data.signedUrl;photoUrlCache.set(path,url);}
-   if(img.isConnected&&img.dataset.photoPath===path)img.src=url;
-  }catch(err){console.warn('Photo unavailable',err);}
- }));
+ // Avoid dozens of concurrent signed-URL requests on older iPhones.
+ const pending=images.filter(img=>img.dataset.photoPath);
+ const worker=async()=>{
+  while(pending.length){
+   const img=pending.shift(),path=img.dataset.photoPath;
+   if(!img.isConnected)continue;
+   try{
+    let url=photoUrlCache.get(path);
+    if(!url){const result=await sb.storage.from('nikcar-photos').createSignedUrl(path,3600);if(result.error)throw result.error;url=result.data.signedUrl;photoUrlCache.set(path,url);}
+    if(img.isConnected&&img.dataset.photoPath===path)img.src=url;
+   }catch(err){console.warn('Photo unavailable',err);}
+  }
+ };
+ await Promise.all(Array.from({length:Math.min(3,pending.length)},()=>worker()));
 }
 async function uploadFleetPhoto(file,path){
  if(!file)return null;
@@ -241,7 +247,7 @@ function layout(body,title){
  const nav=tabs.map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}" ${id===page?'aria-current="page"':''}><span class="nav-symbol">${navIcon(id)}</span> ${id==='sto'?'СТО':id==='tracking'?'GPS / Техніка':id==='nikcar-ai'?'ШІ NikCar':id==='api'?'API та інтеграції':t(id)}</button>`).join('');
  const visibleMobile=(isOwner()?['dashboard','cars','drivers','sto','points']:['cars','announcements','requests','sto','sos']);
  const mobile=tabs.filter(([id])=>visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}" ${id===page?'aria-current="page"':''}><span>${navIcon(id)}</span><span>${id==='nikcar-ai'?'ШІ NikCar':t(id)}</span></button>`).join('')+`<button data-action="more" class="${showMore?'active':''}"><span>⋯</span><span>${lang==='uk'?'Ще':'More'}</span></button>`;
- const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${id==='nikcar-ai'?'ШІ NikCar':t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav" aria-label="${lang==='uk'?'Основна навігація':'Main navigation'}">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="page-heading"><div><div class="subtitle">NIKCAR / FLEET CONTROL · 0.90.0</div><h1>${title}</h1></div><span class="page-context">${e(isOwner()?(lang==='uk'?'Кабінет власника':'Owner workspace'):(lang==='uk'?'Кабінет водія':'Driver workspace'))}</span></div>${body}</main></div><nav class="mobilebar" aria-label="${lang==='uk'?'Мобільна навігація':'Mobile navigation'}">${mobile}</nav>${moreMenu}</div>`;
+ const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${id==='nikcar-ai'?'ШІ NikCar':t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav" aria-label="${lang==='uk'?'Основна навігація':'Main navigation'}">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="page-heading"><div><div class="subtitle">NIKCAR / FLEET CONTROL · 0.91.0</div><h1>${title}</h1></div><span class="page-context">${e(isOwner()?(lang==='uk'?'Кабінет власника':'Owner workspace'):(lang==='uk'?'Кабінет водія':'Driver workspace'))}</span></div>${body}</main></div><nav class="mobilebar" aria-label="${lang==='uk'?'Мобільна навігація':'Mobile navigation'}">${mobile}</nav>${moreMenu}</div>`;
 }
 // Fleet Intelligence v1: owner-only financial estimates from already loaded records.
 // Incomplete expenses or unconfirmed payments must never be labelled audited profit.
