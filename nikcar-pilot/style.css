@@ -723,3 +723,46 @@ img[data-photo-path],img.car-photo,img.driver-avatar{cursor:zoom-in}#nikcar-phot
 @media(max-width:430px) and (prefers-reduced-motion:reduce){
  .card,.top,.mobilebar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
+
+/* v0.92 — cross-device compatibility: iPhone SE/8/X/11/12, Android Chrome/WebView */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-width:0}
+button,input,select,textarea{max-width:100%}
+button,a,[role=button]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+input,textarea,select{min-width:0}
+input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
+@media (hover:none) and (pointer:coarse){
+ button,.btn,.nav button,.mobilebar button{min-height:44px}
+ input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px}
+ .mobilebar button{touch-action:manipulation}
+}
+@media(max-width:680px){
+ .shell,.workspace{width:100%;min-width:0}
+ .main{max-width:100%;overflow-x:clip}
+ .top{max-width:100%;min-width:0}
+ .mobilebar{width:100%;max-width:100%;padding-bottom:max(6px,env(safe-area-inset-bottom,0px))}
+ .main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+ .cards,.grid{grid-template-columns:minmax(0,1fr)}
+ .card{max-width:100%;min-width:0}
+ .card input,.card select,.card textarea{max-width:100%}
+ .row{min-width:0}
+ .table-wrap{max-width:100%;overflow-x:auto}
+ .guide-card{max-height:calc(100vh - 130px);max-height:calc(100dvh - 130px)}
+}
+@media(max-width:380px){
+ .top{gap:6px}
+ .right,.header-controls{gap:4px}
+ .main{padding-left:10px!important;padding-right:10px!important}
+ .mobilebar button{font-size:10px;letter-spacing:-.2px}
+ .card{padding:12px!important}
+}
+@media(max-height:620px) and (max-width:680px){
+ .guide-card{max-height:50vh;overflow:auto}
+ .main{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))!important}
+}
+@media(prefers-reduced-data:reduce){
+ .card,.mobilebar,.top{box-shadow:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html:focus-within{scroll-behavior:auto}
+}
