@@ -525,3 +525,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .ai-alert-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 8px;background:transparent;color:var(--ink);border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer}.ai-alert-row span:last-child{color:var(--accent-dark);font-size:12px;white-space:nowrap}.ai-alert-row:focus-visible{outline:2px solid var(--accent)}
 
 .ai-finance-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 0;border-bottom:1px solid var(--line);font-size:12px}.ai-finance-row strong{font-weight:700}@media(max-width:700px){.ai-finance-row{grid-template-columns:1fr 1fr}.ai-finance-row b{grid-column:1/-1}}
+
+.car-checks{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0}.car-checks>.small:first-child{flex-basis:100%}.car-checks>.small:last-child{flex-basis:100%}
