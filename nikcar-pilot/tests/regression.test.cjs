@@ -441,7 +441,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.85\.0/);
+ assert.match(html,/style\.css\?v=0\.89\.0/);
  assert.equal(manifest.theme_color,'#101116');
  assert.match(source,/SERVICE · FLEET/);
 });
@@ -462,7 +462,7 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
  assert.match(css,/button:focus-visible,a:focus-visible/);
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
- assert.match(html,/style\.css\?v=0\.85\.0/);
+ assert.match(html,/style\.css\?v=0\.89\.0/);
 });
 
 test('owner sees rental handover and return controls, drivers cannot perform them', () => {
@@ -569,7 +569,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.85\.0/);
+ assert.match(html,/app\.js\?v=0\.89\.0/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
