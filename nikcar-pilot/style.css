@@ -650,3 +650,13 @@ img[data-photo-path],img.car-photo,img.driver-avatar{cursor:zoom-in}#nikcar-phot
  .more-overlay{z-index:999}
  #toast{bottom:calc(82px + env(safe-area-inset-bottom))}
 }
+
+/* First visit guide */
+#nikcar-guide{position:fixed;inset:0;z-index:50000;pointer-events:auto}
+.guide-shade{position:absolute;inset:0;background:rgba(5,16,19,.72)}
+.guide-focus{position:fixed;border:3px solid #d9ff00;border-radius:16px;box-shadow:0 0 0 4px #fff5;pointer-events:none;z-index:1}
+.guide-card{position:fixed;left:16px;right:16px;max-width:430px;margin:auto;background:var(--surface,#fff);color:var(--ink,#172e33);padding:22px;border-radius:20px;z-index:2;box-shadow:0 15px 55px #0005}
+.guide-card small{font-weight:700;opacity:.7}.guide-card h2{margin:8px 0}.guide-card p{margin:0 0 20px;color:inherit}
+.guide-actions{display:flex;justify-content:space-between;gap:10px}.guide-actions button{border:1px solid var(--line,#ddd);padding:12px 16px;border-radius:12px;background:transparent;color:inherit;font-weight:700}
+.guide-actions [data-guide=next]{background:#d9ff00;color:#101116;border-color:#d9ff00}
+@media(max-width:680px){.guide-card{bottom:calc(100px + env(safe-area-inset-bottom));max-height:65dvh;overflow:auto}}
