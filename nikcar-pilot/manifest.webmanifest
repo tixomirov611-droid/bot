@@ -1,15 +1,15 @@
 {
-  "name": "NikCar Fleet Control — Cloud Console 0.14.0",
+  "name": "NikCar Fleet Control — Pre-Final 0.69.0",
   "short_name": "NikCar",
-  "description": "NikCar fleet management pilot",
+  "description": "NikCar Fleet Control pre-final 0.69",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#DFFF00",
+  "background_color": "#101116",
+  "theme_color": "#101116",
   "icons": [
     {
-      "src": "/icon.svg?v=0.14.0",
+      "src": "/icon.svg?v=0.69.0",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
