@@ -870,6 +870,18 @@ if(a==='notification-permission'){if(!('Notification' in window)){toast('Бра�
  if(a==='finish-sos'){return mutation(sb.from('sos_requests').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',id).eq('status','claimed').eq('helper_id',me.id).select(),t('resolved'));}
  if(a==='cancel-sos'){return mutation(sb.from('sos_requests').update({status:'cancelled'}).eq('id',id).eq('status','open').eq('requester_id',me.id).select(),t('cancelled'));}
 }
+function closeNikcarPhotoViewer(){document.getElementById('nikcar-photo-viewer')?.remove();document.body.style.overflow='';}
+document.addEventListener('keydown',evt=>{if(evt.key==='Escape')closeNikcarPhotoViewer();});
+document.addEventListener('click',evt=>{
+ const close=evt.target.closest('[data-close-photo-viewer]');
+ if(close){closeNikcarPhotoViewer();return;}
+ const img=evt.target.closest('img[data-photo-path],img.car-photo,img.driver-avatar');
+ if(!img||!img.closest('#root')||!img.complete||!img.naturalWidth)return;
+ const overlay=document.createElement('div');overlay.id='nikcar-photo-viewer';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Перегляд фотографії');
+ overlay.innerHTML='<button type="button" data-close-photo-viewer aria-label="Закрити фото" class="nikcar-photo-close">✕</button><img alt="">';
+ const enlarged=overlay.querySelector('img');enlarged.src=img.currentSrc||img.src;enlarged.alt=img.alt||'Фото';overlay.addEventListener('click',e=>{if(e.target===overlay)closeNikcarPhotoViewer();});
+ document.body.appendChild(overlay);document.body.style.overflow='hidden';overlay.querySelector('button').focus();
+});
 document.addEventListener('click',evt=>{
  const b=evt.target.closest('button[data-action]');
  if(!b)return;
