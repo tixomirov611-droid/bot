@@ -562,8 +562,9 @@ async function clickAction(btn){const a=btn.dataset.action,id=btn.dataset.id;if(
   if(car.status!=='free'){toast(lang==='uk'?'Спочатку завершіть оренду автомобіля.':'Finish the car rental first.');return;}
   const ok=window.confirm((lang==='uk'?'Видалити автомобіль ':'Delete vehicle ')+car.model+' · '+car.plate+'? '+(lang==='uk'?'Цю дію неможливо скасувати. Якщо є пов’язані записи, видалення буде заблоковано.':'This cannot be undone. Related records may prevent deletion.'));
   if(!ok)return;
-  const {error}=await sb.from('cars').delete().eq('id',car.id).select('id');
+  const {data:deleted,error}=await sb.from('cars').delete().eq('id',car.id).select('id');
   if(error){toast((lang==='uk'?'Не вдалося видалити: ':'Delete failed: ')+error.message);return;}
+  if(!deleted?.some(row=>String(row.id)===String(car.id))){toast(lang==='uk'?'Автомобіль не видалено. Перевірте права доступу та оновіть сторінку.':'Vehicle was not deleted. Check permissions and refresh.');await load();return;}
   if(carEditor===car.id)carEditor=null;
   toast(lang==='uk'?'Автомобіль видалено':'Vehicle deleted');forceMutationRefresh++;await load();return;
  }
