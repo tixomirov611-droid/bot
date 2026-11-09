@@ -15,7 +15,7 @@ const logic = source.slice(0, startup);
 function harness(initialStorage={}) {
   const events = new Map();
   const root = {innerHTML: 'INITIAL'};
-  const toast = {textContent: '', classList: {add(){}, remove(){}}};
+  const toast = {remove(){},textContent: '', classList: {add(){}, remove(){}}};
   const netStatus={hidden:true,textContent:''};
   const storageData = {...initialStorage};
   const themeButtons=[];
@@ -27,7 +27,7 @@ function harness(initialStorage={}) {
   let dirty = false, online = true;
   const navigatorMock={get onLine(){return online;}};
   const doc = {
-    documentElement: {lang: 'uk',dataset:{}}, visibilityState: 'visible',
+    body:{style:{}},documentElement: {lang: 'uk',dataset:{}}, visibilityState: 'visible',
     getElementById: k => k === 'root' ? root : k === 'network-status' ? netStatus : toast,
     addEventListener(k, fn) {
       const handlers = events.get(k) || [];
@@ -43,7 +43,7 @@ function harness(initialStorage={}) {
   };
   function FormDataMock(form) {this.get = k => form.values?.[k] ?? null;}
   const factory = new Function('document','window','location','localStorage','sessionStorage','navigator','FormData','setTimeout','clearTimeout','crypto',
-    logic + '\nreturn {setUser:x=>user=x,setMe:x=>me=x,setClient:x=>sb=x,setRecords:x=>records=x,' +
+    logic + '\nreturn {setUser:x=>user=x,setMe:x=>me=x,setClient:x=>{sb=x;if(!sb.channel)sb.channel=()=>({on(){return this},subscribe(){return this}})},setRecords:x=>records={...emptyRecords(),...x},' +
     'get:()=>({user,me,records,page,loadVersion,carEditor}),load,mutation,click:clickAction,docs:documentsPage,requestsPage,' +
     'authErrorMessage,clear:clearAccountState,setRecovery:x=>setRecoveryMode(x),getRecovery:()=>({active:recoveryMode,notice:authNotice,isError:authNoticeIsError}),getTheme:()=>theme,themeControl,themeLogin:authPage,themeHeader:()=>layout("", "Test")};');
   const app = factory(doc, win, {hash:'',search:''},storage,storage,navigatorMock,FormDataMock,()=>0,()=>{},{randomUUID:()=> 'mock-file'});
@@ -247,7 +247,7 @@ test('failed database document save removes exactly the newly uploaded orphan', 
   from:table=>({insert:async row=>{saved.push({table,row});return {error:new Error('DB rejected row')};}})
  });
  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:100,type:'image/jpeg'}],
-  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
  await h.fire('change',{target:input});
  assert.equal(uploaded.length,1);
  assert.equal(saved.length,1);
@@ -267,7 +267,7 @@ test('document upload failure never deletes another file', async () => {
   remove:async()=>{removed++;return {error:null};}
  })}});
  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:50,type:'image/jpeg'}],
-  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
  await h.fire('change',{target:input});
  assert.equal(removed,0);
  assert.match(h.toast.textContent,/Upload rejected/);
@@ -278,7 +278,7 @@ test('offline document upload never reaches private storage', async () => {
  let uploads=0;
  h.app.setClient({storage:{from:()=>({upload:async()=>{uploads++;return {error:null}}})}});
  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[{size:100,type:'image/jpeg'}],
-  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
  await h.fire('change',{target:input});
  assert.equal(uploads,0);
  assert.match(h.toast.textContent,/Немає інтернету/);
@@ -441,8 +441,8 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.15\.1/);
- assert.equal(manifest.theme_color,'#DFFF00');
+ assert.match(html,/style\.css\?v=0\.84\.0/);
+ assert.equal(manifest.theme_color,'#101116');
  assert.match(source,/SERVICE · FLEET/);
 });
 
@@ -462,7 +462,7 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
  assert.match(css,/button:focus-visible,a:focus-visible/);
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
- assert.match(html,/style\.css\?v=0\.15\.1/);
+ assert.match(html,/style\.css\?v=0\.84\.0/);
 });
 
 test('owner sees rental handover and return controls, drivers cannot perform them', () => {
@@ -510,7 +510,7 @@ test('fictional photo upload smoke: accepted JPEG/PNG/WEBP are sent to private b
   });
   const fictionalPhoto={name:'FICTIONAL_TEST.'+extension,size:125000,type:mime};
   const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[fictionalPhoto],
-   matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+   matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
   await h.fire('change',{target:input});
   assert.equal(uploaded.length,1,'one upload '+mime);
   assert.equal(uploaded[0].bucket,'nikcar-driver-docs');
@@ -537,7 +537,7 @@ test('fictional photo upload rejects unsupported MIME, empty files and >6 MiB wi
   const h=harness();h.app.setUser({id:'test-driver-auth'});h.app.setMe(driver);
   let calls=0;h.app.setClient({storage:{from:()=>({upload:async()=>{calls++;return {error:null}}})}});
   const input={id:'document-input',dataset:{docKind:'passport_1',car:''},files:[file],
-   matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+   matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
   await h.fire('change',{target:input});
   assert.equal(calls,0,file.name);
   assert.equal(input.disabled,false);
@@ -549,7 +549,7 @@ test('document upload blocks owner impersonation before contacting storage', asy
  let calls=0;h.app.setClient({storage:{from:()=>({upload:async()=>{calls++;return {error:null}}})}});
  const input={id:'document-input',dataset:{docKind:'passport_1',car:''},
   files:[{name:'FICTIONAL_TEST.jpg',size:15000,type:'image/jpeg'}],
-  matches:selector=>selector.includes('input[type="file"]'),disabled:false,closest:()=>null};
+  matches:selector=>selector==='input[type="file"][data-doc-kind]',disabled:false,closest:()=>null};
  await h.fire('change',{target:input});
  assert.equal(calls,0);
 });
@@ -569,7 +569,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.19\.0/);
+ assert.match(html,/app\.js\?v=0\.84\.0/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
@@ -596,7 +596,7 @@ test('fleet evidence is owner-only, uses private storage and does not claim AI d
  assert.match(source,/nikcar-fleet-private/);
  assert.match(source,/fleet_inspections/);
  assert.match(source,/fleet_files/);
- assert.match(source,/Автоматичний ІІ-аналіз пошкоджень поки не підключений/);
+ assert.match(source,/nikcar-damage-ai/);
  assert.match(source,/if\(form.id==='fleet-file-form'\)/);
  assert.match(source,/if\(form.id==='fleet-inspection-form'\)/);
  assert.match(source,/fleetEvidencePage\(\)/);
