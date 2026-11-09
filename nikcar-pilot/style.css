@@ -590,3 +590,28 @@ textarea{min-height:92px;resize:vertical}.field{min-width:0}.field label{line-he
 }
 @media(max-width:360px){.dashboard-shortcuts{grid-template-columns:1fr 1fr}.quick-icon{display:none}.page-context{display:none}}
 @media(prefers-reduced-motion:reduce){.btn,.nav button,.quick-action,.metric{transition:none!important}.quick-action:hover{transform:none}}
+
+/* NikCar 0.76: private fleet imagery and readable visual analytics */
+.car-art{overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:150px}
+.car-art img.vehicle-photo{display:block;width:100%;height:190px;object-fit:cover;object-position:center;border-radius:14px}
+.driver-identity{display:flex;align-items:center;gap:14px;min-width:0}
+.driver-identity>div{min-width:0}
+.driver-avatar{width:48px;height:48px;flex:0 0 48px;border-radius:15px;object-fit:cover;display:inline-grid;place-items:center;background:var(--soft);color:var(--accent-dark);font-size:21px;font-weight:800;border:1px solid var(--line)}
+.driver-avatar.large{width:74px;height:74px;flex-basis:74px;border-radius:22px;font-size:29px}
+.profile-photo-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px;background:var(--soft);border-radius:15px}
+.profile-photo-row .field{flex:1;min-width:190px}
+.driver-card{gap:14px}.driver-name{overflow-wrap:anywhere}
+.insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0 24px}
+.insight-card{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px;min-width:0}
+.insight-card h3{font-size:18px;margin:5px 0 8px}
+.insight-card p{margin:6px 0}.insight-eyebrow{font-size:10px;letter-spacing:.15em;font-weight:800;color:var(--accent-dark)}
+.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:12px;color:var(--muted)}
+.chart-legend b{color:var(--ink)}.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.legend-dot.lime{background:var(--accent)}.legend-dot.muted{background:var(--line)}
+.donut-chart{flex:0 0 128px;width:128px;height:128px;border-radius:50%;background:conic-gradient(var(--accent) 0 var(--chart-value),var(--line) var(--chart-value) 100%);display:grid;place-items:center}
+.donut-chart>div{display:grid;place-items:center;align-content:center;width:96px;height:96px;border-radius:50%;background:var(--surface)}
+.donut-chart strong{font-size:25px;letter-spacing:-.05em;line-height:1.1}.donut-chart small{font-size:11px;color:var(--muted)}
+.progress-track{height:11px;width:100%;background:var(--line);border-radius:99px;overflow:hidden;margin:16px 0 9px}
+.progress-track span{display:block;height:100%;background:var(--accent);border-radius:99px}
+@media(max-width:900px){.insights-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.insight-card{padding:16px;gap:10px}.donut-chart{flex-basis:104px;width:104px;height:104px}.donut-chart>div{width:78px;height:78px}.donut-chart strong{font-size:21px}.car-art img.vehicle-photo{height:170px}}
