@@ -615,3 +615,23 @@ textarea{min-height:92px;resize:vertical}.field{min-width:0}.field label{line-he
 .progress-track span{display:block;height:100%;background:var(--accent);border-radius:99px}
 @media(max-width:900px){.insights-grid{grid-template-columns:1fr}}
 @media(max-width:480px){.insight-card{padding:16px;gap:10px}.donut-chart{flex-basis:104px;width:104px;height:104px}.donut-chart>div{width:78px;height:78px}.donut-chart strong{font-size:21px}.car-art img.vehicle-photo{height:170px}}
+
+/* 0.77 — consistent dashboard section rhythm and rental damage evidence */
+.main:has(.dashboard-hero)>.dashboard-hero{margin-bottom:24px}
+.main:has(.dashboard-hero)>.metric-grid{margin-top:20px;margin-bottom:24px}
+.main:has(.dashboard-hero)>.dashboard-shortcuts{margin-top:24px;margin-bottom:26px}
+.main:has(.dashboard-hero)>.insights-grid{margin-top:24px;margin-bottom:28px}
+.main:has(.dashboard-hero)>.card,.main:has(.dashboard-hero)>.notice-line,.main:has(.dashboard-hero)>.two-panel,.main:has(.dashboard-hero)>.cards{margin-top:22px;margin-bottom:22px}
+.main:has(.dashboard-hero)>.card+.card,.main:has(.dashboard-hero)>.notice-line+.two-panel{margin-top:24px}
+.main:has(.dashboard-hero)>.two-panel>.card{min-width:0}
+.rental-damage{margin-top:14px;padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--soft)}
+.rental-damage-title{font-weight:800;margin-bottom:12px}
+.damage-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:12px}
+.damage-photo-card{display:flex;flex-direction:column;gap:7px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:7px;color:var(--ink);text-align:left}
+.damage-photo-card:hover{border-color:var(--accent-dark)}
+.damage-thumbnail{width:100%;height:116px;object-fit:cover;border-radius:8px}
+.damage-photo-card span{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.damage-upload-form{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:12px;margin-top:14px}
+.damage-upload-form .field{min-width:0}
+@media(max-width:900px){.damage-upload-form{grid-template-columns:1fr 1fr}.damage-upload-form button{grid-column:1/-1}}
+@media(max-width:600px){.main:has(.dashboard-hero)>.dashboard-hero{margin-bottom:18px}.main:has(.dashboard-hero)>.metric-grid,.main:has(.dashboard-hero)>.dashboard-shortcuts,.main:has(.dashboard-hero)>.insights-grid,.main:has(.dashboard-hero)>.card,.main:has(.dashboard-hero)>.notice-line,.main:has(.dashboard-hero)>.two-panel{margin-top:18px;margin-bottom:20px}.damage-upload-form{grid-template-columns:1fr}.damage-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
