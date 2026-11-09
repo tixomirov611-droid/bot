@@ -1,7 +1,7 @@
 {
-  "name": "NikCar Fleet Control — Pre-Final 0.69.0",
+  "name": "NikCar Fleet Control",
   "short_name": "NikCar",
-  "description": "NikCar Fleet Control pre-final 0.69",
+  "description": "Керування автопарком, орендою, документами та сповіщеннями",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#101116",
   "icons": [
     {
-      "src": "/icon.svg?v=0.69.0",
+      "src": "/icon.svg?v=0.82.0",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
