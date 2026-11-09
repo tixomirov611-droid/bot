@@ -3,15 +3,15 @@
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
- <meta name="theme-color" content="#FFFFFF">
+ <meta name="theme-color" content="#101116">
  <script>
   // Apply saved preference before the stylesheet paints, avoiding a bright flash.
   try {
-   if (localStorage.getItem('nikcar-theme') === 'dark') {
+   if (localStorage.getItem('nikcar-theme') !== 'light') {
     document.documentElement.dataset.theme='dark';
     document.querySelector('meta[name="theme-color"]').setAttribute('content','#101116');
-   } else document.documentElement.dataset.theme='light';
-  } catch (_) { document.documentElement.dataset.theme='light'; }
+   } else document.documentElement.dataset.theme='dark';
+  } catch (_) { document.documentElement.dataset.theme='dark'; }
  </script>
  <meta name="robots" content="noindex,nofollow">
  <meta name="description" content="NikCar Fleet Control — сучасний кабінет власника автопарку та водія. Автомобілі, заявки, документи, платежі та чат. Тестова версія.">
@@ -23,7 +23,7 @@
  <link rel="manifest" href="./manifest.webmanifest?v=0.15.1">
  <link rel="preload" as="image" type="image/svg+xml" href="./fleet-hero.svg">
  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
- <link rel="stylesheet" href="./style.css?v=0.43.0">
+ <link rel="stylesheet" href="./style.css?v=0.48.0">
 </head>
 <body>
  <div id="network-status" class="network-status" role="status" aria-live="polite" hidden></div>
@@ -32,6 +32,6 @@
  <script src="./config.js?v=0.12.0"></script>
  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
  <script src="./gps-demo.js?v=2"></script>
- <script src="./app.js?v=0.47.0"></script>
+ <script src="./app.js?v=0.48.0"></script>
 </body>
 </html>
