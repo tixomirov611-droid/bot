@@ -552,7 +552,7 @@ function captureOwnerUiDraft(){
  if(!user||!isOwner())return;
  const forms=[...document.querySelectorAll('#root form')];
  for(const form of forms){
-  if(!form.id||['auth-form','profile-update','chat-send'].includes(form.id))continue;
+  if(!form.id||['auth-form','profile-update','chat-send'].includes(form.id)||form.dataset.submitting==='1')continue;
   const fields=[...form.querySelectorAll('input,select,textarea')].filter(el=>
    el.name&&el.type!=='password'&&el.type!=='file'&&el.type!=='hidden');
   if(!fields.length)continue;
@@ -567,7 +567,7 @@ function captureOwnerUiDraft(){
 function restoreOwnerUiDraft(){
  if(!user||!isOwner())return;
  for(const form of document.querySelectorAll('#root form')){
-  if(!form.id||form.id==='new-car')continue;
+  if(!form.id||form.id==='new-car'||form.dataset.submitting==='1')continue;
   const values=ownerUiDrafts.get(user.id+':'+form.id);
   if(!values)continue;
   for(const el of form.querySelectorAll('input,select,textarea')){
