@@ -785,6 +785,7 @@ document.addEventListener('click',evt=>{
 });
 document.addEventListener('change',async evt=>{
  const f=evt.target;
+ if(f.matches('[data-notify-setting]')){const key=f.dataset.notifySetting;if(!Object.prototype.hasOwnProperty.call(notificationDefaults,key))return;const st=notificationState();st.settings[key]=f.checked;saveNotificationState(st);render();return;}
  if(f.id==='document-car'){selectedCar=f.value||null;render();return;}
  if(!f.matches('input[type="file"][data-doc-kind]'))return;
  const file=f.files?.[0],kind=f.dataset.docKind,car=f.dataset.car||null;
