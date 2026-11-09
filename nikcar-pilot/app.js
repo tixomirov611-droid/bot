@@ -1142,7 +1142,7 @@ document.addEventListener('submit',async evt=>{
  const form=evt.target;if(form?.id!=='days-off-form')return;
  evt.preventDefault();if(!isOwner()||!sb)return;
  const data=new FormData(form),from=String(data.get('from')||''),to=String(data.get('to')||'');
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(from)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(to)||to<from){toast('Перевірте дати');return;}
+ if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(from)||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(to)||to<from){toast('Перевірте дати');return;}
  const button=form.querySelector('button[type=submit]');button.disabled=true;
  try{const {error}=await sb.rpc('nikcar_approve_days_off_v085',{p_car_id:String(data.get('car')),p_from:from,p_to:to,p_reason:String(data.get('reason')||'')});if(error)throw error;toast('Вихідні підтверджено');form.reset();await load();}
  catch(err){toast('Не збережено: '+(err.message||'сервер недоступний'));}
