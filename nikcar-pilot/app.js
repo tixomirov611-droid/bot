@@ -112,7 +112,9 @@ const emptyRecords=()=>({driver_days_off:[],days_off_notifications:[],cars:[],re
 let sb=null,user=null,me=null,records=emptyRecords();
 const driverTabs=[['cars','🚙'],['announcements','◉'],['requests','▤'],['payments','₴'],['sto','⚒'],['points','⛽'],['notifications','🔔'],['documents','📄'],['chat','💬'],['sos','🆘'],['account','◯']];
 const ownerTabs=[['dashboard','⌂'],['nikcar-ai','✦'],['tracking','⌖'],['cars','🚙'],['drivers','♙'],['requests','▤'],['payments','₴'],['points','⛽'],['notifications','🔔'],['settings','⚙'],['repairs','⚒'],['sto','🔧'],['documents','📄'],['announcements','◉'],['chat','💬'],['sos','🆘'],['account','◯']];
-const tabsForRole=()=>isOwner()?ownerTabs:driverTabs;
+const mechanicTabs=[['sto','🔧'],['cars','🚙'],['notifications','🔔'],['account','◯']];
+const isMechanic=()=>!isOwner()&&staffAssignments.some(a=>a.profile_id===me?.id&&a.staff_role==='mechanic');
+const tabsForRole=()=>isOwner()?ownerTabs:isMechanic()?mechanicTabs:driverTabs;
 let carEditor=null;let sessionInitialized=false;let showMore=false;let currentRepair=null;
 let selectedDriverId=null,currentAuthUserId=null,loadVersion=0,lastForegroundRefresh=0;
 let forceMutationRefresh=0;
@@ -245,7 +247,7 @@ function settingsPage(){
 function layout(body,title){
  const tabs=tabsForRole();
  const nav=tabs.map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}" ${id===page?'aria-current="page"':''}><span class="nav-symbol">${navIcon(id)}</span> ${id==='sto'?'СТО':id==='tracking'?'GPS / Техніка':id==='nikcar-ai'?'ШІ NikCar':id==='api'?'API та інтеграції':t(id)}</button>`).join('');
- const visibleMobile=(isOwner()?['dashboard','cars','drivers','sto','points']:['cars','announcements','requests','sto','sos']);
+ const visibleMobile=(isOwner()?['dashboard','cars','drivers','sto','points']:isMechanic()?['sto','cars','notifications','account']:['cars','announcements','requests','sto','sos']);
  const mobile=tabs.filter(([id])=>visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}" class="${id===page?'active':''}" ${id===page?'aria-current="page"':''}><span>${navIcon(id)}</span><span>${id==='nikcar-ai'?'ШІ NikCar':t(id)}</span></button>`).join('')+`<button data-action="more" class="${showMore?'active':''}"><span>⋯</span><span>${lang==='uk'?'Ще':'More'}</span></button>`;
  const moreMenu=showMore?`<div class="more-overlay"><div class="more-sheet"><h2>${lang==='uk'?'Усі розділи':'All sections'}</h2>${tabs.filter(([id])=>!visibleMobile.includes(id)).map(([id,icon])=>`<button data-action="nav" data-page="${id}"><span>${navIcon(id)}</span>${id==='nikcar-ai'?'ШІ NikCar':t(id)}</button>`).join('')}<button class="btn secondary" data-action="more">${t('cancel')}</button></div></div>`:'';return `<div class="shell"><aside class="sidebar"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="sidebar-kicker">${e(isOwner()?t('ownerGreeting'):t('driverProfile'))}</div><nav class="nav" aria-label="${lang==='uk'?'Основна навігація':'Main navigation'}">${nav}</nav><div class="sidehint">${t('onlyPilot')}</div></aside><div class="workspace"><header class="top"><div class="brand"><img class="brand-mark" src="./icon.svg" alt="" width="42" height="42"><span class="brand-copy">Nik<em>Car</em><small>SERVICE · FLEET</small></span></div><div class="right"><span class="small desktop-label">${e(me.full_name||user?.email||'')}</span>${status(me.access)} ${headerControls()}</div></header><main class="main"><div class="page-heading"><div><div class="subtitle">NIKCAR / FLEET CONTROL · 0.91.0</div><h1>${title}</h1></div><span class="page-context">${e(isOwner()?(lang==='uk'?'Кабінет власника':'Owner workspace'):(lang==='uk'?'Кабінет водія':'Driver workspace'))}</span></div>${body}</main></div><nav class="mobilebar" aria-label="${lang==='uk'?'Мобільна навігація':'Mobile navigation'}">${mobile}</nav>${moreMenu}</div>`;
 }
@@ -409,7 +411,7 @@ function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('
 }
 let staffAssignments=[];
 async function refreshStaffAssignments(){if(!me)return;const {data,error}=await sb.from('nikcar_staff_assignments').select('*');if(error)throw error;staffAssignments=data||[];}
-function staffAssignmentsPanel(){if(!isOwner())return '';const staff=records.profiles.filter(p=>p.role==='driver').sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||''),'uk'));return '<div class="card" style="margin-bottom:16px"><h2>👥 Адміністратори, бухгалтери та механіки</h2><p class="small">Призначення посади доступне власнику. Механік має доступ до заявок СТО, фотографій та зміни статусу ремонту.</p>'+staff.map(p=>{const current=staffAssignments.find(a=>a.profile_id===p.id)?.staff_role||'';return '<div class="row stack" style="margin:10px 0;align-items:center"><span style="flex:1">'+e(p.full_name||p.phone||'Користувач')+'</span><select data-staff-profile="'+e(p.id)+'" aria-label="Посада '+e(p.full_name||'')+'"><option value="" '+(!current?'selected':'')+'>Без посади</option><option value="administrator" '+(current==='administrator'?'selected':'')+'>Адміністратор</option><option value="accountant" '+(current==='accountant'?'selected':'')+'>Бухгалтер</option><option value="mechanic" '+(current==='mechanic'?'selected':'')+'>Механік СТО</option></select><button type="button" class="btn secondary tiny" data-action="save-staff-role" data-id="'+e(p.id)+'">Зберегти</button></div>'}).join('')+'</div>';}
+function staffAssignmentsPanel(){if(!isOwner())return '';const staff=records.profiles.filter(p=>p.role==='driver').sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||''),'uk'));return '<div class="card" style="margin-bottom:16px"><h2>👥 Адміністратори, бухгалтери та СТОшники</h2><p class="small">Призначення посади доступне власнику. СТОшник має доступ до заявок СТО, фотографій та зміни статусу ремонту.</p>'+staff.map(p=>{const current=staffAssignments.find(a=>a.profile_id===p.id)?.staff_role||'';return '<div class="row stack" style="margin:10px 0;align-items:center"><span style="flex:1">'+e(p.full_name||p.phone||'Користувач')+'</span><select data-staff-profile="'+e(p.id)+'" aria-label="Посада '+e(p.full_name||'')+'"><option value="" '+(!current?'selected':'')+'>Без посади</option><option value="administrator" '+(current==='administrator'?'selected':'')+'>Адміністратор</option><option value="accountant" '+(current==='accountant'?'selected':'')+'>Бухгалтер</option><option value="mechanic" '+(current==='mechanic'?'selected':'')+'>СТОшник · механік</option></select><button type="button" class="btn secondary tiny" data-action="save-staff-role" data-id="'+e(p.id)+'">Зберегти</button></div>'}).join('')+'</div>';}
 function driversPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const staffPanel=staffAssignmentsPanel();const people=records.profiles.filter(x=>x.role==='driver').slice().sort((a,b)=>a.full_name.localeCompare(b.full_name,'uk'));
  const list=people.map(p=>{
@@ -825,7 +827,7 @@ async function load({preserveDraft=false}={}){
   if(error)throw error;
   accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
   me=data;
-  if(me&&isOwner()&&!sessionInitialized)page='dashboard';void refreshStaffAssignments().then(()=>{if(page==='drivers'||page==='sto')render()}).catch(err=>console.warn(err));
+  if(me&&isOwner()&&!sessionInitialized)page='dashboard';void refreshStaffAssignments().then(()=>{if(page==='drivers'||page==='sto'){if(isMechanic()&&page==='drivers')page='sto';render()}}).catch(err=>console.warn(err));
   if(me&&activeMember())startChatPresence();
   sessionInitialized=true;
   if(me){
@@ -913,7 +915,7 @@ if(a==='notification-permission'){if(!('Notification' in window)){toast('Бра�
  if(a==='driver-docs'){if(!isOwner())return;const driver=records.profiles.find(p=>p.id===id&&p.role==='driver');if(!driver)return;selectedDriverId=driver.id;page='documents';render();window.scrollTo(0,0);return;}if(a==='all-driver-docs'){if(!isOwner())return;selectedDriverId=null;page='documents';render();return;}
  if(a==='save-staff-role'){
   if(!isOwner())return;const sel=document.querySelector('select[data-staff-profile="'+id+'"]');const role=sel?.value;
-  if(!['','administrator','accountant'].includes(role))return;
+  if(!['','administrator','accountant','mechanic'].includes(role))return;
   if(role){const {error}=await sb.from('nikcar_staff_assignments').upsert({profile_id:id,staff_role:role,assigned_by:user.id},{onConflict:'profile_id'});if(error)throw error;}
   else {const {error}=await sb.from('nikcar_staff_assignments').delete().eq('profile_id',id);if(error)throw error;}
   await refreshStaffAssignments();render();toast('Посаду збережено');return;
