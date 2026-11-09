@@ -678,3 +678,12 @@ img[data-photo-path],img.car-photo,img.driver-avatar{cursor:zoom-in}#nikcar-phot
  .main .cards,.main .grid{row-gap:14px;column-gap:12px}
  .main .card{padding:18px}
 }
+
+/* v0.86.2: prevent iPhone form controls from sharing a horizontal line. */
+#days-off-form,#weekly-rent-form{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important;width:100%;min-width:0}
+#days-off-form>label,#weekly-rent-form>label{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:7px!important;width:100%!important;min-width:0!important;margin:0!important;font-weight:650}
+#days-off-form input,#days-off-form select,#weekly-rent-form input,#weekly-rent-form select{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;margin:0!important;box-sizing:border-box!important;min-height:48px}
+#days-off-form button[type=submit],#weekly-rent-form button[type=submit]{width:100%;min-height:48px;margin-top:4px}
+#driver-days-off,#driver-days-off>.card,#driver-days-off>div,#driver-days-off section{min-width:0;max-width:100%}
+#driver-days-off>div>section+section{margin-top:16px}
+@media(max-width:680px){#days-off-form,#weekly-rent-form{gap:14px!important}#days-off-form input[type=date],#weekly-rent-form input[type=date]{font-size:16px!important;-webkit-appearance:auto;appearance:auto}#driver-days-off>div{padding-top:18px!important}}
