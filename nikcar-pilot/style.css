@@ -635,3 +635,5 @@ textarea{min-height:92px;resize:vertical}.field{min-width:0}.field label{line-he
 .damage-upload-form .field{min-width:0}
 @media(max-width:900px){.damage-upload-form{grid-template-columns:1fr 1fr}.damage-upload-form button{grid-column:1/-1}}
 @media(max-width:600px){.main:has(.dashboard-hero)>.dashboard-hero{margin-bottom:18px}.main:has(.dashboard-hero)>.metric-grid,.main:has(.dashboard-hero)>.dashboard-shortcuts,.main:has(.dashboard-hero)>.insights-grid,.main:has(.dashboard-hero)>.card,.main:has(.dashboard-hero)>.notice-line,.main:has(.dashboard-hero)>.two-panel{margin-top:18px;margin-bottom:20px}.damage-upload-form{grid-template-columns:1fr}.damage-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.vehicle-check-panel{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:15px;background:var(--soft);display:grid;gap:8px}.vehicle-check-panel h3{font-size:15px;margin:10px 0 0}.vehicle-check-panel p{margin:0}.vehicle-check-panel .actions{margin-top:10px}.vehicle-check-panel .line{padding:8px 0;border-bottom:1px solid var(--line)}
