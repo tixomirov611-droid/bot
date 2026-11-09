@@ -27,4 +27,4 @@ jobs:
       - name: Check application syntax
         run: node --check nikcar-pilot/app.js
       - name: Test login, forms, data isolation and duplicate actions
-        run: node --test nikcar-pilot/tests/regression.test.cjs
+        run: node --test nikcar-pilot/tests/*.test.* nikcar-pilot/v085-business.test.mjs
