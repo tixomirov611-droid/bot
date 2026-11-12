@@ -996,6 +996,7 @@ if(a==='enable-push'){try{await nikcarEnablePush();}catch(err){toast(err.message
 }
 function closeNikcarPhotoViewer(){document.getElementById('nikcar-photo-viewer')?.remove();document.body.style.overflow='';}
 document.addEventListener('keydown',evt=>{if(evt.key==='Escape')closeNikcarPhotoViewer();});
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',evt=>{if(evt.data?.type==='nikcar-open-chat'){page='chat';render();}});
 document.addEventListener('click',evt=>{
  const close=evt.target.closest('[data-close-photo-viewer]');
  if(close){closeNikcarPhotoViewer();return;}
