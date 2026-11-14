@@ -768,53 +768,67 @@ function parseTechPassport(text){
  const cert=certLabel.match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)?.[0]?.replace(/\s/g,'')||'';
  return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
 }
+function applyPassportOcrFields(values){
+ const form=document.getElementById('new-car');if(!form)return 0;
+ let filled=0;
+ for(const name of ['plate','model','vin','year','registration_certificate']){
+  const field=form.elements.namedItem(name);
+  if(!field||!values[name])continue;
+  if(field.value.trim()&&field.dataset.ocrFilled!=='1')continue;
+  if(field.value.trim()===values[name])continue;
+  field.value=values[name];field.dataset.ocrFilled='1';filled++;
+ }
+ if(filled){form.dataset.dirty='1';captureNewCarDraft();}
+ const vinPreview=document.getElementById('tech-passport-vin');
+ if(vinPreview&&form.elements.namedItem('vin')?.value)vinPreview.textContent='VIN: '+form.elements.namedItem('vin').value+' · перевірте правильність';
+ return filled;
+}
 async function readTechPassport(file){
  const status=document.getElementById('tech-passport-status');
  if(!status||!isOwner())return;
  if(passportOcrBusy){passportOcrQueue.push(file);status.textContent='Фото додано. Очікує розпізнавання…';return;}
- if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Лише JPG, PNG, WEBP до 6 МБ';return;}
- passportOcrBusy=true;status.textContent='Розпізнавання фото або скриншота Дії…';
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024){status.textContent='Лише JPG, PNG, WebP до 5 МБ';return;}
+ passportOcrBusy=true;status.textContent='Підготовка розпізнавання…';
+ let worker=null;
  try{
   if(!window.Tesseract)await new Promise((ok,fail)=>{
    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
   });
-  const worker=await window.Tesseract.createWorker('eng+ukr',1);
-  let result;
-  try{
-   const image=await createImageBitmap(file);
+  worker=await window.Tesseract.createWorker('eng+ukr',1);
+  let best={};let filled=0;
+  const merge=(found)=>{
+   for(const key of ['plate','model','vin','year','registration_certificate'])if(found[key]&&!best[key])best[key]=found[key];
+   filled+=applyPassportOcrFields(found);
+  };
+  let bitmap=null;
+  try{bitmap=await createImageBitmap(file);}catch(_){}
+  if(bitmap){
    try{
-    const angles=[0,90,270,180];let bestText='',bestScore=-1;
-    for(const angle of angles){
-     const rotated=angle===90||angle===270;
-     const ratio=Math.min(1,1700/Math.max(image.width,image.height));
-     const w=Math.max(1,Math.round(image.width*ratio)),h=Math.max(1,Math.round(image.height*ratio));
+    const ratio=Math.min(1,1400/Math.max(bitmap.width,bitmap.height));
+    const w=Math.max(1,Math.round(bitmap.width*ratio)),h=Math.max(1,Math.round(bitmap.height*ratio));
+    const angles=[0,90,270,180];
+    for(let i=0;i<angles.length;i++){
+     const angle=angles[i],rotated=angle===90||angle===270;
+     status.textContent='Розпізнавання техпаспорта: '+(i+1)+'/4 орієнтацій…';
      const canvas=document.createElement('canvas');canvas.width=rotated?h:w;canvas.height=rotated?w:h;
-     const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(image,-w/2,-h/2,w,h);
-     const scanned=await worker.recognize(canvas);const text=String(scanned.data.text||'');const found=parseTechPassport(text);
-     const score=(found.plate?8:0)+(found.vin?7:0)+(found.model?4:0)+(found.year?3:0)+(found.registration_certificate?3:0)+Math.min(text.trim().length/150,2);
-     if(score>bestScore){bestScore=score;bestText=text;}
-     if(found.plate&&found.vin&&found.model)break;
+     const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(bitmap,-w/2,-h/2,w,h);
+     const scan=await worker.recognize(canvas);
+     merge(parseTechPassport(scan.data.text||''));
+     canvas.width=1;canvas.height=1;
+     if(best.plate&&best.vin&&best.model&&best.registration_certificate)break;
     }
-    result={data:{text:bestText}};
-   }finally{image.close();}
-  }catch(err){
-   // iOS browsers without createImageBitmap: OCR original image as a fallback.
-   result=await worker.recognize(file);
-  }finally{await worker.terminate();}
-  const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
-  if(!form)return;
-  let filled=0;
-  for(const name of ['plate','model','vin','year','registration_certificate']){
-   const field=form.elements.namedItem(name);
-   if(field&&values[name]&&(!field.value.trim()||field.dataset.ocrFilled==='1')){field.value=values[name];field.dataset.ocrFilled='1';filled++;}
+   }finally{bitmap.close();}
+  }else{
+   status.textContent='Розпізнавання техпаспорта…';
+   const scan=await worker.recognize(file);merge(parseTechPassport(scan.data.text||''));
   }
-  form.dataset.dirty='1';captureNewCarDraft();
-  // Do not interrupt OCR with an iOS validation bubble; show the inline hint below.
-  const vinPreview=document.getElementById('tech-passport-vin');
-  if(vinPreview)vinPreview.textContent=values.vin?'VIN: '+values.vin+' (перевірте перед збереженням)':'VIN не розпізнано';
-  status.textContent=filled?'Заповнено полів: '+filled+'. '+(!values.plate?'Держномер не знайдено — введіть вручну. ':'')+(!values.year?'Рік випуску не вказаний — не беремо дату оновлення Дії. ':'')+'Перевірте дані. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
- }catch(err){status.textContent='Не вдалося розпізнати. Перевірте інтернет для завантаження OCR або введіть дані вручну.';}
- finally{passportOcrBusy=false;updatePassportAttachments();const next=passportOcrQueue.shift();if(next)void readTechPassport(next);}
+  status.textContent=filled?'Автоматично заповнено '+filled+' полів. Перевірте VIN, номер, модель і дані документа перед збереженням.':'Текст розпізнано, але надійно визначити поля не вдалося. Спробуйте чіткіше фото або заповніть вручну.';
+ }catch(err){console.warn('Passport OCR failed',err);status.textContent='Розпізнавання не завершилось. Фото прикріплені; можна повторити або заповнити вручну.';}
+ finally{
+  if(worker)try{await worker.terminate();}catch(_){}
+  passportOcrBusy=false;updatePassportAttachments();
+  const next=passportOcrQueue.shift();if(next)void readTechPassport(next);
+ }
 }
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
 // In-memory only: no personal data, credentials or unfinished forms in browser storage.
