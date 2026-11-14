@@ -898,3 +898,9 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 .nik-bank-option.nik-bank-privat{border-color:rgba(91,194,70,.3)}
 .nik-bank-option.nik-bank-mono{border-color:rgba(152,169,197,.3)}
 .nik-bank-pay{display:flex;align-items:center;justify-content:center;min-height:45px}
+
+/* Beta 1.22.9 — AI memory: readable Save button on iPhone */
+.nik-ai-memory-form{display:flex;align-items:stretch;gap:10px;margin-top:14px;min-width:0}
+.nik-ai-memory-form input{flex:1 1 auto;min-width:0;width:100%;border:1px solid var(--line);border-radius:15px;padding:12px 15px;background:var(--surface,white);color:var(--ink);font:inherit}
+.nik-ai-memory-form .nik-ai-memory-save{flex:0 0 auto;min-width:132px;width:auto;height:auto;min-height:48px;padding:10px 18px;border-radius:15px;white-space:nowrap;font-size:15px;line-height:1.2;letter-spacing:0}
+@media(max-width:580px){.nik-ai-memory-form{flex-direction:column;align-items:stretch}.nik-ai-memory-form input{min-height:52px}.nik-ai-memory-form .nik-ai-memory-save{width:100%;min-width:0;min-height:48px}}
