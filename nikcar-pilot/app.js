@@ -791,10 +791,11 @@ function parseTechPassport(text){
  if(!year){
   const years=lines.filter(x=>/^(?:19|20)\d{2}$/.test(x));
   if(years.length===1)year=years[0];
+  if(!year){const match=joined.match(/(?:\(?B\s*[.·:]\s*2\)?|YEAR\s+OF\s+MANUFACTURE|РІК\s+ВИПУСКУ)\s*[:\-]?\s*((?:19|20)\d{2})/i);if(match)year=match[1];}
  }
 
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
- const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x))];
+ const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x)),joined];
  const cert=certCandidates.map(x=>(x.match(/(?:^|[^A-ZА-ЯІЇЄ])([A-ZА-ЯІЇЄ]{2,3})\s*(?:№|N[o°.]?)?\s*(\d{6})(?!\d)/i)||[])).find(x=>x[1]&&x[2]);
  const registration_certificate=cert?cert[1].toUpperCase()+' № '+cert[2]:'';
  return {plate,model:cleanedModel,year,vin,registration_certificate};
@@ -854,7 +855,7 @@ async function readTechPassport(file){
    status.textContent='Розпізнавання техпаспорта…';
    const scan=await worker.recognize(file);merge(parseTechPassport(scan.data.text||''));
   }
-  status.textContent=filled?'Автоматично заповнено '+filled+' полів. Перевірте VIN, номер, модель і дані документа перед збереженням.':'Текст розпізнано, але надійно визначити поля не вдалося. Спробуйте чіткіше фото або заповніть вручну.';
+  const form=document.getElementById('new-car');const present=['plate','model','vin','year','registration_certificate'].filter(key=>form?.elements.namedItem(key)?.value?.trim());const missing=['plate','model','vin','year','registration_certificate'].filter(key=>!present.includes(key));status.textContent=(filled?'Додано '+filled+' нових полів. ':'')+'Заповнено '+present.length+'/5. '+(missing.length?'Ще потрібно перевірити: '+missing.map(x=>({plate:'держномер',model:'марку й модель',vin:'VIN',year:'рік',registration_certificate:'серію техпаспорта'}[x])).join(', ')+'.':'Перевірте дані перед збереженням.');
  }catch(err){console.warn('Passport OCR failed',err);status.textContent='Розпізнавання не завершилось. Фото прикріплені; можна повторити або заповнити вручну.';}
  finally{
   if(worker)try{await worker.terminate();}catch(_){}
