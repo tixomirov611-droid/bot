@@ -920,3 +920,16 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 .gps-demo-map-actions button:first-child{background:linear-gradient(135deg,#d6ff2e,#8ce0bd);color:#10151b;border-color:transparent}
 .gps-demo-main .gps-demo-detail{margin-top:12px}
 @media(max-width:760px){.gps-demo-shell{padding:12px!important}.gps-demo-layout{display:flex!important;flex-direction:column!important;gap:10px!important}.gps-demo-main{order:0;width:100%;min-width:0}.gps-demo-list{order:1;width:100%;max-width:none}.gps-demo-maplibre{height:58dvh!important;min-height:380px}.gps-demo-heading h2{font-size:24px}.gps-demo-map-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.gps-demo-map-actions button{font-size:12px;padding:9px 5px}.gps-demo-detail{border-radius:18px}.gps-demo-simulator{margin-top:14px}}
+
+/* Owner Documents: compact accessible expandable driver rows */
+.nik-doc-accordion{padding:0!important;overflow:hidden}
+.nik-doc-summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:18px 20px;min-height:82px;touch-action:manipulation}
+.nik-doc-summary::-webkit-details-marker{display:none}
+.nik-doc-summary-info{display:flex;flex-direction:column;gap:5px;min-width:0}
+.nik-doc-summary-info strong{font-size:19px;line-height:1.25;overflow-wrap:anywhere}
+.nik-doc-summary-info .small{font-size:13px}
+.nik-doc-chevron{font-size:30px;color:#d5ff24;transition:transform .2s;flex-shrink:0}
+.nik-doc-accordion[open] .nik-doc-chevron{transform:rotate(180deg)}
+.nik-doc-content{padding:4px 20px 18px;border-top:1px solid var(--line,rgba(180,180,180,.2))}
+.nik-doc-summary:focus-visible{outline:2px solid #d5ff24;outline-offset:-4px}
+@media(max-width:600px){.nik-doc-summary{padding:16px}.nik-doc-content{padding:4px 16px 16px}.nik-doc-summary-info strong{font-size:18px}}
