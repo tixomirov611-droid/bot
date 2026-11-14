@@ -1228,6 +1228,7 @@ document.addEventListener('click',evt=>{
 });
 document.addEventListener('change',async evt=>{
  const f=evt.target;
+ if(f.id==='nikcar-contract-tenant'){nikcarFillTenant();return;}
  if(f.matches('input[type="file"][data-car-avatar]')){
   const file=f.files?.[0],carId=f.dataset.carAvatar;
   if(!file||!isOwner())return;
