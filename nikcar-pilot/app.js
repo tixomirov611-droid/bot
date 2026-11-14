@@ -1146,6 +1146,7 @@ async function load({preserveDraft=false}={}){
   if(error)throw error;
   accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
   me=data;
+  nikcarRememberTestAccount();
   if(me&&isOwner()&&!sessionInitialized)page='dashboard';void refreshStaffAssignments().then(changed=>{if(changed&&!hasUnsavedForm()&&(page==='drivers'||page==='sto'||page==='dashboard')){if(isMechanic()&&page==='drivers')page='sto';render();}}).catch(err=>console.warn('Staff refresh unavailable',err));
   if(me&&activeMember())startChatPresence();
   sessionInitialized=true;
