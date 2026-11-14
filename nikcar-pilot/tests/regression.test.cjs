@@ -442,7 +442,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=1\.20\.2/);
+ assert.match(html,/style\.css\?v=1\.20\.3/);
  assert.equal(manifest.theme_color,'#101116');
  assert.match(source,/SERVICE · FLEET/);
 });
@@ -463,7 +463,7 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
  assert.match(css,/button:focus-visible,a:focus-visible/);
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
- assert.match(html,/style\.css\?v=1\.20\.2/);
+ assert.match(html,/style\.css\?v=1\.20\.3/);
 });
 
 test('owner sees rental handover and return controls, drivers cannot perform them', () => {
@@ -570,7 +570,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=1\.20\.2/);
+ assert.match(html,/app\.js\?v=1\.20\.3/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
@@ -586,7 +586,7 @@ test('fleet reminders use owner-only data and warn about missing push delivery',
  assert.match(source,/function fleetServicePage\(\)/);
  assert.match(source,/fleet_service_events/);
  assert.match(source,/Push-повідомлення ще не підключені/);
- assert.match(source,/if\(form.id==='service-event'\)/);
+ assert.match(source,/if\(formId==='service-event'\)/);
  assert.match(source,/if\(a==='service-done'\)/);
  assert.match(source,/fleetServicePage\(\)/);
 });
@@ -598,8 +598,8 @@ test('fleet evidence is owner-only, uses private storage and does not claim AI d
  assert.match(source,/fleet_inspections/);
  assert.match(source,/fleet_files/);
  assert.match(source,/nikcar-damage-ai/);
- assert.match(source,/if\(form.id==='fleet-file-form'\)/);
- assert.match(source,/if\(form.id==='fleet-inspection-form'\)/);
+ assert.match(source,/if\(formId==='fleet-file-form'\)/);
+ assert.match(source,/if\(formId==='fleet-inspection-form'\)/);
  assert.match(source,/fleetEvidencePage\(\)/);
 });
 
@@ -622,12 +622,28 @@ test('car editing saves weekly price and targets only the selected car',async()=
  const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);h.app.setRecords(records({cars:[{id:'car1'}]}));
  let update,id;
  h.app.setClient({from:()=>({update(v){update=v;return this},eq(k,v){assert.equal(k,'id');id=v;return this},select:async()=>({error:{message:'test write blocked'}})})});
- const form={id:'edit-car-form',dataset:{},isConnected:true,values:{id:'car1',model:'Renault Logan',plate:'ab1234ce',rate:'5600',year:'2017',vin:'ABC',registration_certificate:'CTI 123456'},querySelector:()=>null};
+ const form={id:'edit-car-form',dataset:{},isConnected:true,values:{car_id:'car1',model:'Renault Logan',plate:'ab1234ce',rate:'5600',year:'2017',vin:'ABC',registration_certificate:'CTI 123456'},querySelector:()=>null};
  await h.fire('submit',{target:form,preventDefault(){}});
  assert.equal(id,'car1');assert.equal(update.weekly_rate,5600);assert.equal(update.daily_rate,800);assert.equal(update.plate,'AB1234CE');assert.match(h.toast.textContent,/test write blocked/);
 });
 test('invalid rental price never reaches database',async()=>{
  const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);let calls=0;h.app.setClient({from(){calls++;throw Error('unexpected write')}});
- await h.fire('submit',{target:{id:'edit-car-form',dataset:{},isConnected:true,values:{id:'car1',rate:'-1'},querySelector:()=>null},preventDefault(){}});
+ await h.fire('submit',{target:{id:'edit-car-form',dataset:{},isConnected:true,values:{car_id:'car1',rate:'-1'},querySelector:()=>null},preventDefault(){}});
  assert.equal(calls,0);assert.match(h.toast.textContent,/ціну оренди/);
+});
+
+test('car form routes submission even when a named field shadows form.id',async()=>{
+ const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);h.app.setRecords(records({cars:[{id:'car1'}]}));
+ let written=false,prevented=false;
+ h.app.setClient({from:()=>({update(){written=true;return this},eq(){return this},select:async()=>({error:{message:'expected response'}})})});
+ const form={id:{tagName:'INPUT'},getAttribute:k=>k==='id'?'edit-car-form':null,dataset:{},isConnected:true,values:{car_id:'car1',model:'Renault',plate:'AA1234AA',year:'2015',rate:'5600'},querySelector:()=>null};
+ await h.fire('submit',{target:form,preventDefault(){prevented=true;}});
+ assert.equal(prevented,true);assert.equal(written,true);assert.equal(form.dataset.submitting,'0');
+});
+test('successful edit reloads saved car data and closes editor',async()=>{
+ const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);
+ const tables={cars:[{id:'car1',model:'Old',plate:'AA1234AA',weekly_rate:5000,status:'free'}]};h.app.setRecords(records(tables));
+ const db=mockDb(owner,tables),from=db.from;db.from=table=>{const q=from(table);q.update=patch=>{assert.equal(table,'cars');Object.assign(tables.cars[0],patch);return q};return q};h.app.setClient(db);
+ await h.fire('submit',{target:{id:'edit-car-form',getAttribute:()=> 'edit-car-form',dataset:{},isConnected:true,values:{car_id:'car1',model:'Renault Megane',plate:'BH1234AB',rate:'5600',year:'2016',vin:'VF123456789012345',registration_certificate:'СТІ № 123456'},querySelector:()=>null},preventDefault(){}});
+ assert.equal(h.app.get().records.cars[0].model,'Renault Megane');assert.equal(h.app.get().records.cars[0].weekly_rate,5600);assert.equal(h.app.get().carEditor,null);assert.match(h.toast.textContent,/Дані авто збережено/);
 });
