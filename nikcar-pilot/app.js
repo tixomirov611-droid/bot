@@ -1263,7 +1263,7 @@ document.addEventListener('click',evt=>{
 });
 document.addEventListener('change',async evt=>{
  const f=evt.target;
- if(f.id==='nikcar-contract-tenant'||f.id==='nikcar-contract-car'){
+ if(f.id?.startsWith('nikcar-contract-')||f.id?.startsWith('nikcar-rent-')||f.id?.startsWith('contract-tenant-')){
   nikcarContractSignatures.owner=null;nikcarContractSignatures.tenant=null;
   for(const role of ['owner','tenant']){const status=document.getElementById('nikcar-sign-'+role+'-status');if(status)status.textContent='Не підписано';}
   if(f.id==='nikcar-contract-tenant')nikcarFillTenant();
