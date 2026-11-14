@@ -765,8 +765,7 @@ function parseTechPassport(text){
  const year=yearMatch?yearMatch[0]:'';
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
  const certLabel=extract(/^(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*:/i);
- const certCode=code('B')||'';
- const cert=(certLabel||certCode).match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)?.[0]?.replace(/\s/g,'')||'';
+ const cert=certLabel.match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)?.[0]?.replace(/\s/g,'')||'';
  return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
 }
 async function readTechPassport(file){
