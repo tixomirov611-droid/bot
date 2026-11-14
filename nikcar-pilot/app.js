@@ -742,32 +742,45 @@ function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPa
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const afterLabel=(line,re)=>{const match=line.match(re);if(!match)return '';return line.slice(match.index+match[0].length).replace(/^[\s:;.\-]+/,'').trim();};
- const labeled=(re)=>{
+ // Ukrainian registration certificate: field codes are printed in a separate column.
+ const field=(key)=>{
+  const re=new RegExp('(?:^|\\s)\\(?'+key.replace('.','\\.')+'\\)?(?=\\s|[:.\\-]|$)','i');
   for(let i=0;i<lines.length;i++){
-   const tail=afterLabel(lines[i],re);
+   const match=lines[i].match(re);if(!match)continue;
+   const tail=lines[i].slice(match.index+match[0].length).replace(/^[\s:;.\-]+/,'').trim();
    if(tail)return tail;
-   if(re.test(lines[i]))return lines[i+1]||'';
+   for(let j=i+1;j<Math.min(lines.length,i+3);j++){
+    if(/^\(?[A-HJ-Z](?:\.\d)?\)?(?:\s|$)/i.test(lines[j]))break;
+    if(lines[j].trim())return lines[j].trim();
+   }
   }
   return '';
  };
- const code=(key)=>labeled(new RegExp('^\\s*'+key.replace('.','\\.')+'(?=\\s|[:.\\-]|$)\\s*[:.\\-]?\\s*','i'));
- const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||code('D.1');
- const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||code('D.3');
- const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||code('E');
- const vin=((vinSource.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'').toUpperCase();
- // Never scan the entire document for a plate: certificate serial numbers can look similar.
- const plateSource=labeled(/^\s*(?:державний\s*(?:номер|реєстраційний\s*номер)|номерний\s*знак|реєстраційний\s*номер|номер\s*авто|license\s*plate|registration\s*mark|plate)\s*[:\-]/i)||code('A');
- const normalizePlate=(v)=>String(v||'').toUpperCase().replace(/[АВЕКМНОРСТУХІЇЄ]/g,c=>({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X','І':'I','Ї':'I','Є':'E'}[c]||c)).replace(/[\s-]/g,'');
- const plateCandidate=normalizePlate(plateSource);
- const plateMatch=plateCandidate.match(/(?:^|[^A-Z0-9])([A-Z]{2}[0-9O]{4}[A-Z]{2})(?![A-Z0-9])/);
- const plate=plateMatch?plateMatch[1].replace(/[O]/g,(c,i)=>i>=2&&i<=5?'0':c):'';
- const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i);
- const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
+ const labeled=(re)=>{
+  for(let i=0;i<lines.length;i++){
+   const match=lines[i].match(re);if(!match)continue;
+   const tail=lines[i].slice(match.index+match[0].length).replace(/^[\s:;.\-]+/,'').trim();
+   if(tail)return tail;
+   return lines[i+1]||'';
+  }
+  return '';
+ };
+ const normalizeLetters=v=>String(v||'').toUpperCase().replace(/[АВЕКМНОРСТУХІЇЄ]/g,c=>({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X','І':'I','Ї':'I','Є':'E'}[c]||c));
+ const plateSource=labeled(/^\s*(?:державний\s*номер|номерний\s*знак|реєстраційний\s*номер|license\s*plate|registration\s*mark)\s*[:\-]/i)||field('A');
+ const plateToken=normalizeLetters(plateSource).replace(/[\s-]/g,'').match(/[A-Z]{2}[0-9O]{4}[A-Z]{2}(?![A-Z0-9])/);
+ const plate=plateToken?plateToken[0].replace(/O/g,(ch,i)=>i>=2&&i<=5?'0':ch):'';
+ const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||field('D.1');
+ const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||field('D.3');
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
+ const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||field('E');
+ const vin=(normalizeLetters(vinSource).match(/[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9])/)||normalizeLetters(raw).match(/\b[A-HJ-NPR-Z0-9]{17}\b/)||[])[0]||'';
+ const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i)||field('B.2');
+ const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
- const cert=(certSource.match(/[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}(?![0-9])/i)||[])[0]?.replace(/\s/g,'').toUpperCase()||'';
- return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
+ const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x))];
+ const cert=certCandidates.map(x=>(x.match(/(?:^|[^A-ZА-ЯІЇЄ])([A-ZА-ЯІЇЄ]{2,3})\s*(?:№|N[o°.]?)?\s*(\d{6})(?!\d)/i)||[])).find(x=>x[1]&&x[2]);
+ const registration_certificate=cert?cert[1].toUpperCase()+' № '+cert[2]:'';
+ return {plate,model:cleanedModel,year,vin,registration_certificate};
 }
 function applyPassportOcrFields(values){
  const form=document.getElementById('new-car');if(!form)return 0;
