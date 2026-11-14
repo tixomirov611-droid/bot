@@ -4,6 +4,7 @@ const root=document.getElementById('root');
 const photoUrlCache=new Map();
 const PHOTO_URL_TTL_MS=50*60*1000;
 const PHOTO_URL_CACHE_LIMIT=180;
+const photoUrlInFlight=new Map();
 async function hydratePrivatePhotos(){
  if(!sb)return;
  const images=[...document.querySelectorAll('img[data-photo-path]')];
@@ -16,7 +17,7 @@ async function hydratePrivatePhotos(){
    try{
     let entry=photoUrlCache.get(path);
     let url=entry&&entry.expiresAt>Date.now()?entry.url:null;
-    if(!url){const result=await sb.storage.from('nikcar-photos').createSignedUrl(path,3600);if(result.error)throw result.error;url=result.data.signedUrl;photoUrlCache.set(path,{url,expiresAt:Date.now()+PHOTO_URL_TTL_MS});if(photoUrlCache.size>PHOTO_URL_CACHE_LIMIT){const oldest=photoUrlCache.keys().next().value;photoUrlCache.delete(oldest);}}
+    if(!url){let pendingUrl=photoUrlInFlight.get(path);if(!pendingUrl){pendingUrl=(async()=>{const result=await sb.storage.from('nikcar-photos').createSignedUrl(path,3600);if(result.error)throw result.error;const signedUrl=result.data.signedUrl;photoUrlCache.set(path,{url:signedUrl,expiresAt:Date.now()+PHOTO_URL_TTL_MS});if(photoUrlCache.size>PHOTO_URL_CACHE_LIMIT)photoUrlCache.delete(photoUrlCache.keys().next().value);return signedUrl;})();photoUrlInFlight.set(path,pendingUrl);pendingUrl.finally(()=>{if(photoUrlInFlight.get(path)===pendingUrl)photoUrlInFlight.delete(path);}).catch(()=>{});}url=await pendingUrl;}
     if(img.isConnected&&img.dataset.photoPath===path)img.src=url;
    }catch(err){console.warn('Photo unavailable',err);}
   }
@@ -137,7 +138,7 @@ const protectedActions=new Set([
  'claim-sos','release-sos','finish-sos','cancel-sos'
 ]);
 function clearAccountState(){
- loadVersion++;forceMutationRefresh=0;me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
+ loadVersion++;forceMutationRefresh=0;lastRecordsUserId=null;partialLoadWarningShown=false;photoUrlCache.clear();photoUrlInFlight.clear();staffAssignments=[];me=null;records=emptyRecords();selectedCar=null;selectedDriverId=null;carEditor=null;currentRepair=null;
  sessionInitialized=false;showMore=false;page='cars';lastAuthEmail='';pointWallets=[];pointHistory=[];pointLoaded=false;
  if(typeof ownerUiDrafts!=='undefined')ownerUiDrafts.clear();
  mode='signin';authMethod='password';authNotice='';authNoticeIsError=false;
