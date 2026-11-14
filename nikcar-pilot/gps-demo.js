@@ -10,7 +10,7 @@
   {id:'r2',car:'demo-01',date:'2026-11-07',start:'14:20',end:'15:05',distance:12.3,max:58,avg:27,stops:1},
   {id:'r3',car:'demo-02',date:'2026-11-08',start:'08:05',end:'08:32',distance:7.4,max:48,avg:22,stops:1}
  ];
- let section='overview',selected='demo-01',date='2026-11-08',search='',showRoutes=false,mapLayer='satellite';let map=null;const serviceBaselines={};let testStep=0;const testPath=[[31.9810,46.9800],[31.9850,46.9778],[31.9902,46.9760],[31.9946,46.9750],[32.0005,46.9718]];
+ let section='overview',selected='demo-01',date='2026-11-08',search='',showRoutes=false,mapLayer='satellite';let map=null;const serviceBaselines={};const routedPaths={};const routingPending=new Set();let testStep=0;const testPath=[[31.9810,46.9800],[31.9850,46.9778],[31.9902,46.9760],[31.9946,46.9750],[32.0005,46.9718]];
  const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const card=x=>'<button type="button" class="gps-demo-car '+(selected===x.id?'chosen':'')+'" data-gps-select="'+x.id+'"><span class="gps-demo-car-icon">🚘</span><span><strong>'+e(x.title)+'</strong><small>'+e(x.plate)+' · '+e(x.last)+'</small></span><span class="gps-demo-status '+(x.status==='Рух'?'moving':x.status==='Стоянка'?'parked':'offline')+'">'+e(x.status)+'</span></button>';
  const vehicle=()=>samples.find(x=>x.id===selected)||samples[0];
@@ -18,6 +18,22 @@
  'demo-01':[[31.9810,46.9800],[31.9850,46.9778],[31.9902,46.9760],[31.9946,46.9750],[32.0005,46.9718]],
  'demo-02':[[32.0020,46.9700],[32.0065,46.9680],[32.0102,46.9665]]
  };
+ async function requestRoadTrack(id){
+  if(routedPaths[id]||routingPending.has(id)||!paths[id])return;
+  routingPending.add(id);
+  try{
+   const coords=paths[id];const points=coords.map(p=>p.join(',')).join(';');
+   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),9000);
+   let response;try{response=await fetch('https://router.project-osrm.org/route/v1/driving/'+points+'?overview=full&geometries=geojson&steps=false',{signal:controller.signal});}finally{clearTimeout(timeout);}
+   if(!response.ok)throw Error('Routing HTTP '+response.status);
+   const data=await response.json();const route=data.routes?.[0]?.geometry?.coordinates;
+   if(data.code!=='Ok'||!Array.isArray(route)||route.length<2)throw Error('Маршрут недоступний');
+   routedPaths[id]=route;
+   if(map&&map.isStyleLoaded()&&map.getSource('gps-demo-path-'+id)){map.getSource('gps-demo-path-'+id).setData({type:'Feature',geometry:{type:'LineString',coordinates:route},properties:{}});if(map.getLayer('gps-demo-line-'+id))map.setLayoutProperty('gps-demo-line-'+id,'visibility',showRoutes&&selected===id?'visible':'none');}
+   const status=document.getElementById('gps-demo-routing-status');if(status)status.textContent='Демо: маршрут прокладено дорогами (не фактичний GPS-трек).';
+  }catch(err){const status=document.getElementById('gps-demo-routing-status');if(status)status.textContent='Не вдалося прокласти маршрут дорогами. Прямі лінії не показуємо.';}
+  finally{routingPending.delete(id);}
+ }
  function drawMap(){
   const node=document.getElementById('gps-demo-real-map');if(!node||!window.maplibregl)return;
   if(map&&map.getContainer()!==node){map.remove();map=null;}
@@ -32,7 +48,7 @@
   if(!map||!map.isStyleLoaded())return;
   Object.entries(paths).forEach(([id,coords])=>{
    const source='gps-demo-path-'+id,layer='gps-demo-line-'+id;
-   if(!map.getSource(source))map.addSource(source,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords},properties:{}}});
+   if(!map.getSource(source))map.addSource(source,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:routedPaths[id]||[coords[0],coords[0]]},properties:{}}});
    if(!map.getLayer(layer))map.addLayer({id:layer,type:'line',source,paint:{'line-color':id===selected?'#00a989':'#778b9c','line-width':id===selected?5:3,'line-opacity':id===selected?1:.55}});
    else map.setPaintProperty(layer,'line-color',id===selected?'#00a989':'#778b9c');
   });
@@ -43,10 +59,11 @@
    else map.setPaintProperty(id,'circle-radius',x.id===selected?10:7);
   }
   for(const x of samples.filter(x=>x.lon!==null)){const id='gps-demo-label-'+x.id;if(!map.getLayer(id))map.addLayer({id,type:'symbol',source:'gps-demo-point-'+x.id,layout:{'text-field':['get','plate'],'text-size':12,'text-offset':[0,1.7],'text-anchor':'top','text-allow-overlap':true},paint:{'text-color':'#ffffff','text-halo-color':'#101820','text-halo-width':2}});}
-  for(const id of Object.keys(paths)){const layer='gps-demo-line-'+id;if(map.getLayer(layer))map.setLayoutProperty(layer,'visibility',showRoutes&&id===selected?'visible':'none');}
+  if(showRoutes)void requestRoadTrack(selected);
+  for(const id of Object.keys(paths)){const layer='gps-demo-line-'+id;if(map.getLayer(layer))map.setLayoutProperty(layer,'visibility',showRoutes&&id===selected&&!!routedPaths[id]?'visible':'none');}
   const x=vehicle();if(x.lon!==null)map.easeTo({center:[x.lon,x.lat],zoom:13,duration:450});
  }
- const simulate=action=>{const x=samples[0];if(action==='move'){testStep=(testStep+1)%testPath.length;const p=testPath[testStep];x.lon=p[0];x.lat=p[1];x.speed=35+testStep*7;x.status='Рух';x.ignition=true;x.battery=13.9;x.km=+(x.km+1.8).toFixed(1);x.installKm=+(x.installKm+1.8).toFixed(1);x.serviceKm=+(x.serviceKm+1.8).toFixed(1);x.trip=+(x.trip+1.8).toFixed(1);x.last='Щойно';}else if(action==='park'){x.status='Стоянка';x.speed=0;x.ignition=false;x.battery=12.6;x.last='Щойно';}else if(action==='offline'){x.status='Немає зв’язку';x.speed=null;x.battery=null;x.ignition=null;x.last='Немає сигналу';}else if(action==='restore'){x.status='Стоянка';x.speed=0;x.battery=12.7;x.ignition=false;x.last='Щойно';}selected=x.id;section='overview';mount();};
+ const simulate=action=>{const x=samples[0];if(action==='move'){testStep=(testStep+1)%testPath.length;const p=testPath[testStep];paths['demo-01']=testPath.slice(0,testStep+1);delete routedPaths['demo-01'];x.lon=p[0];x.lat=p[1];x.speed=35+testStep*7;x.status='Рух';x.ignition=true;x.battery=13.9;x.km=+(x.km+1.8).toFixed(1);x.installKm=+(x.installKm+1.8).toFixed(1);x.serviceKm=+(x.serviceKm+1.8).toFixed(1);x.trip=+(x.trip+1.8).toFixed(1);x.last='Щойно';}else if(action==='park'){x.status='Стоянка';x.speed=0;x.ignition=false;x.battery=12.6;x.last='Щойно';}else if(action==='offline'){x.status='Немає зв’язку';x.speed=null;x.battery=null;x.ignition=null;x.last='Немає сигналу';}else if(action==='restore'){x.status='Стоянка';x.speed=0;x.battery=12.7;x.ignition=false;x.last='Щойно';}selected=x.id;section='overview';mount();};
  const simulator=()=>'<div class="gps-demo-simulator"><b>🧪 Тестовий автомобіль · TEST-GPS-001</b><p class="small">Імітація GPS без реального трекера. Натискайте кнопки, щоб перевірити зміну статусу, координат, швидкості та пробігу.</p><div class="gps-demo-toolbar"><button type="button" data-gps-sim="move">▶ Рух +1,8 км</button><button type="button" data-gps-sim="park">■ Стоянка</button><button type="button" data-gps-sim="offline">⚠ Втрата зв’язку</button><button type="button" data-gps-sim="restore">↻ Відновити сигнал</button></div></div>';
  const stats=()=>'<div class="gps-demo-stats"><div><small>Пристроїв</small><strong>3</strong></div><div><small>У русі</small><strong>1</strong></div><div><small>На стоянці</small><strong>1</strong></div><div><small>Без зв’язку</small><strong>1</strong></div></div>';
  const km=v=>v===null?'Немає даних':Number(v).toLocaleString('uk-UA')+' км';
