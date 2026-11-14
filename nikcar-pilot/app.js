@@ -769,7 +769,12 @@ function parseTechPassport(text){
  const normalizeLetters=v=>String(v||'').toUpperCase().replace(/[АВЕКМНОРСТУХІЇЄ]/g,c=>({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X','І':'I','Ї':'I','Є':'E'}[c]||c));
  const plateSource=labeled(/^\s*(?:державний\s*номер|номерний\s*знак|реєстраційний\s*номер|license\s*plate|registration\s*mark)\s*[:\-]/i)||field('A');
  const plateClean=normalizeLetters(plateSource).replace(/[\s-]/g,'');
- const plateToken=plateClean.match(/[A-Z]{2}[0-9O]{4}[A-Z]{2}(?![A-Z0-9])/)||null;
+ let plateToken=plateClean.match(/[A-Z]{2}[0-9O]{4}[A-Z]{2}(?![A-Z0-9])/)||null;
+ if(!plateToken){
+  const candidates=[...normalizeLetters(joined).matchAll(/(?:^|[^A-Z0-9])([A-Z]{2}[0-9O]{4}[A-Z]{2})(?![A-Z0-9])/g)].map(m=>m[1]);
+  const unique=[...new Set(candidates)];
+  if(unique.length===1)plateToken=[unique[0]];
+ }
  const plate=plateToken?plateToken[0].replace(/O/g,(ch,i)=>i>=2&&i<=5?'0':ch):'';
  const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||field('D.1');
  const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||field('D.3');
@@ -782,7 +787,11 @@ function parseTechPassport(text){
  const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||field('E');
  const vin=(normalizeLetters(vinSource).match(/[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9])/)||normalizeLetters(raw).match(/\b[A-HJ-NPR-Z0-9]{17}\b/)||[])[0]||'';
  const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i)||field('B.2');
- const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
+ let year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
+ if(!year){
+  const years=lines.filter(x=>/^(?:19|20)\d{2}$/.test(x));
+  if(years.length===1)year=years[0];
+ }
 
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
  const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x))];
