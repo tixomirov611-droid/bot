@@ -742,30 +742,31 @@ function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPa
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const extract=(pattern)=>{
-  const i=lines.findIndex(x=>pattern.test(x));
-  if(i<0)return '';
-  const line=lines[i],match=line.match(pattern);
-  const tail=line.slice(match.index+match[0].length).replace(/^[\s:–-]+/,'').trim();
-  return tail||lines[i+1]||'';
+ const afterLabel=(line,re)=>{const match=line.match(re);if(!match)return '';return line.slice(match.index+match[0].length).replace(/^[\s:;.\-]+/,'').trim();};
+ const labeled=(re)=>{
+  for(let i=0;i<lines.length;i++){
+   const tail=afterLabel(lines[i],re);
+   if(tail)return tail;
+   if(re.test(lines[i]))return lines[i+1]||'';
+  }
+  return '';
  };
- const code=c=>extract(new RegExp('^'+c.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
- const make=extract(/^(?:марка|make|brand)\s*:/i)||code('D.1');
- const model=extract(/^(?:модель|model)\s*:/i)||code('D.3');
- const vinSource=extract(/^(?:VIN|номер кузова|ідентифікаційний номер)\s*:/i)||code('E');
- const vin=(vinSource.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'';
- const plateSource=extract(/^(?:державний номер|номерний знак|реєстраційний номер|номер авто|plate)\s*:/i)||code('A');
- // Ukrainian plate: two letters, four digits, two letters; tolerate OCR spacing and Cyrillic lookalikes.
- const platePattern=/[A-ZА-ЯІЇЄ]{2}[\s-]*[0-9OО]{4}[\s-]*[A-ZА-ЯІЇЄ]{2}/ig;
- const candidates=[...plateSource.matchAll(platePattern),...raw.matchAll(platePattern)];
- const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,'').toUpperCase().replace(/[ОO]/g,(ch,index)=>index>=2&&index<6?'0':ch):'';
- // Dates in Diia screenshots (updated/insurance) are NOT manufacturing years.
- const yearSource=extract(/^(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*:/i);
- const yearMatch=yearSource.match(/\b(?:19|20)\d{2}\b/);
- const year=yearMatch?yearMatch[0]:'';
+ const code=(key)=>labeled(new RegExp('^\\s*'+key.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
+ const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||code('D.1');
+ const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||code('D.3');
+ const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||code('E');
+ const vin=((vinSource.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||raw.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i)||[])[0]||'').toUpperCase();
+ // Never scan the entire document for a plate: certificate serial numbers can look similar.
+ const plateSource=labeled(/^\s*(?:державний\s*(?:номер|реєстраційний\s*номер)|номерний\s*знак|реєстраційний\s*номер|номер\s*авто|license\s*plate|registration\s*mark|plate)\s*[:\-]/i)||code('A');
+ const normalizePlate=(v)=>String(v||'').toUpperCase().replace(/[АВЕКМНОРСТУХІЇЄ]/g,c=>({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X','І':'I','Ї':'I','Є':'E'}[c]||c)).replace(/[\s-]/g,'');
+ const plateCandidate=normalizePlate(plateSource);
+ const plateMatch=plateCandidate.match(/(?:^|[^A-Z0-9])([A-Z]{2}[0-9O]{4}[A-Z]{2})(?![A-Z0-9])/);
+ const plate=plateMatch?plateMatch[1].replace(/[O]/g,(c,i)=>i>=2&&i<=5?'0':c):'';
+ const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i);
+ const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
- const certLabel=extract(/^(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*:/i);
- const cert=certLabel.match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)?.[0]?.replace(/\s/g,'')||'';
+ const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
+ const cert=(certSource.match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)||[])[0]?.replace(/\s/g,'').toUpperCase()||'';
  return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
 }
 function applyPassportOcrFields(values){
@@ -775,6 +776,7 @@ function applyPassportOcrFields(values){
   const field=form.elements.namedItem(name);
   if(!field||!values[name])continue;
   if(field.value.trim()&&field.dataset.ocrFilled!=='1')continue;
+  if(name==='plate'&&field.value.trim()&&field.value.trim()!==values[name])continue;
   if(field.value.trim()===values[name])continue;
   field.value=values[name];field.dataset.ocrFilled='1';filled++;
  }
