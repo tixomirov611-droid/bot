@@ -742,6 +742,7 @@ function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPa
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const joined=lines.join(' ');
  // Ukrainian registration certificate: field codes are printed in a separate column.
  const field=(key)=>{
   const re=new RegExp('(?:^|\\s)\\(?'+key.replace('.','\\.')+'\\)?(?=\\s|[:.\\-]|$)','i');
@@ -767,15 +768,22 @@ function parseTechPassport(text){
  };
  const normalizeLetters=v=>String(v||'').toUpperCase().replace(/[АВЕКМНОРСТУХІЇЄ]/g,c=>({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X','І':'I','Ї':'I','Є':'E'}[c]||c));
  const plateSource=labeled(/^\s*(?:державний\s*номер|номерний\s*знак|реєстраційний\s*номер|license\s*plate|registration\s*mark)\s*[:\-]/i)||field('A');
- const plateToken=normalizeLetters(plateSource).replace(/[\s-]/g,'').match(/[A-Z]{2}[0-9O]{4}[A-Z]{2}(?![A-Z0-9])/);
+ const plateClean=normalizeLetters(plateSource).replace(/[\s-]/g,'');
+ const plateToken=plateClean.match(/[A-Z]{2}[0-9O]{4}[A-Z]{2}(?![A-Z0-9])/)||null;
  const plate=plateToken?plateToken[0].replace(/O/g,(ch,i)=>i>=2&&i<=5?'0':ch):'';
  const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||field('D.1');
  const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||field('D.3');
- const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
+ const brandCandidates=['RENAULT','VOLKSWAGEN','TOYOTA','FORD','MERCEDES','BMW','AUDI','SKODA','OPEL','PEUGEOT','CITROEN','HYUNDAI','KIA','NISSAN','FIAT','DACIA','MAZDA','HONDA','MITSUBISHI','CHEVROLET','VOLVO'];
+ const modelPart=String(model||'').replace(/\s{2,}.*/,'').trim();
+ const brandFromText=brandCandidates.find(x=>new RegExp('(?:^|[^A-Z])'+x+'(?:$|[^A-Z])','i').test(joined))||'';
+ const makePart=String(make||'').replace(/\s{2,}.*/,'').trim();
+ const brand=makePart||brandFromText;
+ const cleanedModel=[brand,modelPart].filter((x,i,arr)=>x&&!(i&&arr[0].toUpperCase()===x.toUpperCase())).join(' ').slice(0,120);
  const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||field('E');
  const vin=(normalizeLetters(vinSource).match(/[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9])/)||normalizeLetters(raw).match(/\b[A-HJ-NPR-Z0-9]{17}\b/)||[])[0]||'';
  const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i)||field('B.2');
  const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
+
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
  const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x))];
  const cert=certCandidates.map(x=>(x.match(/(?:^|[^A-ZА-ЯІЇЄ])([A-ZА-ЯІЇЄ]{2,3})\s*(?:№|N[o°.]?)?\s*(\d{6})(?!\d)/i)||[])).find(x=>x[1]&&x[2]);
@@ -873,7 +881,7 @@ function requestManualCarYear(form){
 function captureNewCarDraft(){
  const form=document.getElementById('new-car');
  if(!form?.elements?.namedItem||!user||!isOwner())return;
- newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
+ newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate','registration_certificate'].map(name=>[name,form.elements.namedItem(name)?.value||'']))};
  saveNewCarDraft();
 }
 function clearNewCarForm(){
