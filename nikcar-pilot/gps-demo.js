@@ -11,7 +11,7 @@
   {id:'r3',car:'demo-02',date:'2026-11-08',start:'08:05',end:'08:32',distance:7.4,max:48,avg:22,stops:1}
  ];
  let section='overview',selected='demo-01',date='2026-11-08',search='';let map=null;
- const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;',"'":'&#39;'}[c]));
+ const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const card=x=>'<button type="button" class="gps-demo-car '+(selected===x.id?'chosen':'')+'" data-gps-select="'+x.id+'"><span class="gps-demo-car-icon">🚘</span><span><strong>'+e(x.title)+'</strong><small>'+e(x.plate)+' · '+e(x.last)+'</small></span><span class="gps-demo-status '+(x.status==='Рух'?'moving':x.status==='Стоянка'?'parked':'offline')+'">'+e(x.status)+'</span></button>';
  const vehicle=()=>samples.find(x=>x.id===selected)||samples[0];
  const paths={
