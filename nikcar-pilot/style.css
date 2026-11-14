@@ -910,3 +910,6 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 .gps-demo-toolbar button{border:1px solid rgba(160,178,197,.35);border-radius:12px;background:rgba(120,145,171,.12);color:inherit;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
 .gps-demo-toolbar button:focus-visible{outline:2px solid #d7ff24;outline-offset:2px}
 .gps-demo-detail>.btn{margin-top:12px;max-width:100%}
+
+.gps-demo-simulator{margin:12px 0;padding:14px;border:1px solid rgba(204,255,36,.35);border-radius:16px;background:linear-gradient(120deg,rgba(190,255,40,.08),rgba(42,195,198,.07))}
+.gps-demo-simulator .gps-demo-toolbar{margin-top:10px}
