@@ -859,3 +859,23 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  :root[data-theme="dark"] .top{box-shadow:0 5px 18px rgba(0,0,0,.20)}
 }
 @media(prefers-reduced-motion:reduce){:root[data-theme="dark"] .btn{transition:none}:root[data-theme="dark"] .btn:hover{transform:none}}
+
+/* Beta 1.22.6 — compact grouped mobile More menu */
+@media(max-width:680px){
+ .more-overlay{padding:0 0 calc(76px + env(safe-area-inset-bottom));background:rgba(4,6,12,.74);align-items:flex-end}
+ .more-sheet{width:100%;max-height:min(77dvh,740px);overflow-y:auto;overscroll-behavior:contain;padding:20px 18px 24px;border-radius:25px 25px 0 0;display:block;box-shadow:0 -16px 60px rgba(0,0,0,.4)}
+ .nik-more-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+ .nik-more-head h2{margin:0;font-size:24px;letter-spacing:-.6px}
+ .nik-more-kicker{font-size:10px;letter-spacing:2.1px;color:#b8d43d;font-weight:800;margin-bottom:4px}
+ .more-sheet button.nik-more-close{width:42px;height:42px;min-height:42px;display:grid;place-items:center;text-align:center;border-radius:13px;background:rgba(136,145,160,.16);font-size:20px;padding:0}
+ .nik-more-group{margin:0 0 17px}
+ .nik-more-group h3{font-size:12px;text-transform:uppercase;letter-spacing:1.15px;color:var(--muted);margin:0 0 9px;font-weight:800}
+ .nik-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .more-sheet .nik-more-grid button:not(.btn){min-width:0;min-height:72px;padding:12px;display:flex;align-items:flex-start;flex-direction:column;justify-content:center;gap:8px;border-radius:15px;font-size:13px;line-height:1.3;font-weight:750;text-align:left;overflow-wrap:anywhere}
+ .nik-more-icon{display:flex;width:25px;height:25px;align-items:center;color:#a8d8da}
+ .nik-more-icon svg{width:22px;height:22px}
+ :root[data-theme="dark"] .more-sheet{background:linear-gradient(160deg,#1e212c,#12151e);border:1px solid #35394a;color:#f6f7fa}
+ :root[data-theme="dark"] .more-sheet .nik-more-grid button:not(.btn){background:linear-gradient(140deg,#2b2e3b,#242733);border:1px solid rgba(192,206,236,.11);color:#f0f2f7}
+ :root[data-theme="dark"] .more-sheet .nik-more-grid button[aria-current="page"]{border-color:#d5ff24;background:rgba(213,255,36,.1)}
+ :root[data-theme="dark"] .nik-more-icon{color:#a2d9dd}
+}
