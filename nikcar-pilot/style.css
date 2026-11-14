@@ -886,3 +886,15 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 .nik-bank-option strong{font-size:17px}.nik-bank-option .btn{margin-top:auto;text-align:center;white-space:normal}
 .nik-bank-number{font-size:18px;font-weight:800;letter-spacing:.6px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 @media(max-width:560px){.nik-bank-options{grid-template-columns:1fr}.nik-bank-option{gap:10px}}
+
+/* Bank payment pictograms */
+.nik-bank-head{display:flex;align-items:center;gap:12px;min-height:52px}
+.nik-bank-head>div{display:flex;flex-direction:column;gap:2px}
+.nik-bank-head strong{font-size:17px;line-height:1.15}
+.nik-bank-head .small{font-size:12px}
+.nik-bank-icon{width:48px;height:48px;flex:0 0 48px;border-radius:15px;display:grid;place-items:center;font-size:30px;font-weight:950;letter-spacing:-2px;box-shadow:inset 0 1px rgba(255,255,255,.23),0 5px 14px rgba(0,0,0,.18)}
+.nik-bank-icon.privat-icon{background:linear-gradient(145deg,#70ca38,#268f24);color:#fff;font-family:Arial,sans-serif;font-style:italic}
+.nik-bank-icon.mono-icon{background:linear-gradient(145deg,#393d49,#080a0f);color:#fff;font-family:Arial,sans-serif;font-weight:900;letter-spacing:-4px;padding-right:4px}
+.nik-bank-option.nik-bank-privat{border-color:rgba(91,194,70,.3)}
+.nik-bank-option.nik-bank-mono{border-color:rgba(152,169,197,.3)}
+.nik-bank-pay{display:flex;align-items:center;justify-content:center;min-height:45px}
