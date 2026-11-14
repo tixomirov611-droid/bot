@@ -751,7 +751,7 @@ function parseTechPassport(text){
   }
   return '';
  };
- const code=(key)=>labeled(new RegExp('^\\s*'+key.replace('.','\\.')+'\\s*[:.\\-]?\\s*','i'));
+ const code=(key)=>labeled(new RegExp('^\\s*'+key.replace('.','\\.')+'(?=\\s|[:.\\-]|$)\\s*[:.\\-]?\\s*','i'));
  const make=labeled(/^\s*(?:марка|make|brand)\s*[:\-]/i)||code('D.1');
  const model=labeled(/^\s*(?:модель|model)\s*[:\-]/i)||code('D.3');
  const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||code('E');
