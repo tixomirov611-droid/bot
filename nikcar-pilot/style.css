@@ -913,3 +913,10 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 
 .gps-demo-simulator{margin:12px 0;padding:14px;border:1px solid rgba(204,255,36,.35);border-radius:16px;background:linear-gradient(120deg,rgba(190,255,40,.08),rgba(42,195,198,.07))}
 .gps-demo-simulator .gps-demo-toolbar{margin-top:10px}
+
+/* GPS map-first layout modeled on mobile tracker */
+.gps-demo-maplibre{height:clamp(380px,65vh,740px)!important;min-height:380px;position:relative;border-radius:18px;overflow:hidden}
+.gps-demo-map-actions{position:relative;z-index:2}
+.gps-demo-map-actions button:first-child{background:linear-gradient(135deg,#d6ff2e,#8ce0bd);color:#10151b;border-color:transparent}
+.gps-demo-main .gps-demo-detail{margin-top:12px}
+@media(max-width:760px){.gps-demo-shell{padding:12px!important}.gps-demo-layout{display:flex!important;flex-direction:column!important;gap:10px!important}.gps-demo-main{order:0;width:100%;min-width:0}.gps-demo-list{order:1;width:100%;max-width:none}.gps-demo-maplibre{height:58dvh!important;min-height:380px}.gps-demo-heading h2{font-size:24px}.gps-demo-map-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.gps-demo-map-actions button{font-size:12px;padding:9px 5px}.gps-demo-detail{border-radius:18px}.gps-demo-simulator{margin-top:14px}}
