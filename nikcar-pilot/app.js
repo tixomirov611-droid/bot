@@ -766,7 +766,7 @@ function parseTechPassport(text){
  const year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
- const cert=(certSource.match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)||[])[0]?.replace(/\s/g,'').toUpperCase()||'';
+ const cert=(certSource.match(/[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}(?![0-9])/i)||[])[0]?.replace(/\s/g,'').toUpperCase()||'';
  return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
 }
 function applyPassportOcrFields(values){
