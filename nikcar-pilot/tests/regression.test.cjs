@@ -48,6 +48,7 @@ function harness(initialStorage={}) {
     'authErrorMessage,clear:clearAccountState,setRecovery:x=>setRecoveryMode(x),getRecovery:()=>({active:recoveryMode,notice:authNotice,isError:authNoticeIsError}),getTheme:()=>theme,themeControl,themeLogin:authPage,themeHeader:()=>layout("", "Test")};');
   const app = factory(doc, win, {hash:'',search:''},storage,storage,navigatorMock,FormDataMock,()=>0,()=>{},{randomUUID:()=> 'mock-file'});
   async function fire(k, event) {
+    if(k==='submit'&&!event.target.matches)event.target.matches=()=>false;
     for(const fn of events.get(k) || []) await fn(event);
   }
   return {app,root,doc,events,fire,setDirty:x=>{dirty=x;},setOnline:x=>{online=x;},addThemeButton:b=>themeButtons.push(b),getSavedTheme:()=>storageData['nikcar-theme'],netStatus,toast};
@@ -441,7 +442,7 @@ test('NikCar Service acid-lime identity is consistent across both themes and app
  assert.match(icon,/#DFFF00/);
  assert.match(brand,/NikCar Service/i);
  assert.match(brand,/>SERVICE</);
- assert.match(html,/style\.css\?v=0\.89\.0/);
+ assert.match(html,/style\.css\?v=1\.20\.1/);
  assert.equal(manifest.theme_color,'#101116');
  assert.match(source,/SERVICE · FLEET/);
 });
@@ -462,7 +463,7 @@ test('readability pass protects readable text, mobile form sizing and keyboard f
  assert.match(css,/\.field input,\.field select,\.field textarea\{font-size:16px\}/);
  assert.match(css,/button:focus-visible,a:focus-visible/);
  assert.match(css,/\.mobilebar button\.active\{color:#344500\}/);
- assert.match(html,/style\.css\?v=0\.89\.0/);
+ assert.match(html,/style\.css\?v=1\.20\.1/);
 });
 
 test('owner sees rental handover and return controls, drivers cannot perform them', () => {
@@ -569,7 +570,7 @@ test('new-car draft survives tab rerender and mobile reload in session only', ()
  assert.match(source,/restoreNewCarDraft\(\);restoreOwnerUiDraft\(\)/);
  assert.doesNotMatch(source,/localStorage\.setItem\('nikcar-car-draft:/);
  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
- assert.match(html,/app\.js\?v=0\.89\.0/);
+ assert.match(html,/app\.js\?v=1\.20\.1/);
 });
 
 test('fleet intelligence is owner-only and labels estimates accurately', () => {
@@ -615,4 +616,18 @@ test('fleet service mileage uses latest inspection and AI photos exclude PDFs',(
  assert.match(source,/effectiveKm=Math\.max/);
  assert.match(source,/test\(x\.object_path\)/);
  assert.match(source,/Для фотоогляду завантажте JPG/);
+});
+
+test('car editing saves weekly price and targets only the selected car',async()=>{
+ const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);h.app.setRecords(records({cars:[{id:'car1'}]}));
+ let update,id;
+ h.app.setClient({from:()=>({update(v){update=v;return this},eq(k,v){assert.equal(k,'id');id=v;return this},select:async()=>({error:{message:'test write blocked'}})})});
+ const form={id:'edit-car-form',dataset:{},isConnected:true,values:{id:'car1',model:'Renault Logan',plate:'ab1234ce',rate:'5600',year:'2017',vin:'ABC',registration_certificate:'CTI 123456'},querySelector:()=>null};
+ await h.fire('submit',{target:form,preventDefault(){}});
+ assert.equal(id,'car1');assert.equal(update.weekly_rate,5600);assert.equal(update.daily_rate,800);assert.equal(update.plate,'AB1234CE');assert.match(h.toast.textContent,/test write blocked/);
+});
+test('invalid rental price never reaches database',async()=>{
+ const h=harness();h.app.setUser({id:'u1'});h.app.setMe(owner);let calls=0;h.app.setClient({from(){calls++;throw Error('unexpected write')}});
+ await h.fire('submit',{target:{id:'edit-car-form',dataset:{},isConnected:true,values:{id:'car1',rate:'-1'},querySelector:()=>null},preventDefault(){}});
+ assert.equal(calls,0);assert.match(h.toast.textContent,/ціну оренди/);
 });
