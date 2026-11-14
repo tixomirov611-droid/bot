@@ -758,7 +758,7 @@ function parseTechPassport(text){
  // Ukrainian plate: two letters, four digits, two letters; tolerate OCR spacing and Cyrillic lookalikes.
  const platePattern=/[A-ZА-ЯІЇЄ]{2}[\s-]*[0-9OО]{4}[\s-]*[A-ZА-ЯІЇЄ]{2}/ig;
  const candidates=[...plateSource.matchAll(platePattern),...raw.matchAll(platePattern)];
- const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,''):'';
+ const plate=candidates.length?candidates[0][0].replace(/[\s-]/g,'').toUpperCase().replace(/[ОO]/g,(ch,index)=>index>=2&&index<6?'0':ch):'';
  // Dates in Diia screenshots (updated/insurance) are NOT manufacturing years.
  const yearSource=extract(/^(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*:/i);
  const yearMatch=yearSource.match(/\b(?:19|20)\d{2}\b/);
@@ -815,7 +815,7 @@ async function readTechPassport(file){
      const scan=await worker.recognize(canvas);
      merge(parseTechPassport(scan.data.text||''));
      canvas.width=1;canvas.height=1;
-     if(best.plate&&best.vin&&best.model&&best.registration_certificate)break;
+     if(best.plate&&best.vin&&best.model)break;
     }
    }finally{bitmap.close();}
   }else{
