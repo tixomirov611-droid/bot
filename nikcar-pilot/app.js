@@ -676,7 +676,7 @@ async function nikcarRentRefresh(){
  const el=target;if(!current()&&!debtTarget?.isConnected)return;
  if(debtTarget?.isConnected&&isOwner())debtTarget.innerHTML=nikcarDebtChart(data||[],openingResult.data||[]);
  if(!el||!current())return;
- el.innerHTML=(data||[]).length?data.map(x=>'<div class="line"><div><b>'+e(carName(x.car_id))+'</b> · '+e(x.week_start)+'<div class="small">'+e(name(x.driver_id))+' · '+(x.status==='overdue'?'🔴 Прострочено':x.status==='paid'?'Сплачено':'Очікує оплати')+' · до понеділка 12:00</div></div><b>'+money(Math.max(0,Number(x.amount_due)-Number(x.paid_amount||0)))+'</b></div>').join(''):'<p class="small">Активних нарахувань поки немає.</p>';
+ el.innerHTML=(openingResult.data||[]).map(x=>'<div class="line"><div><b>'+e(carName(x.car_id))+'</b> · Початковий борг<div class="small">'+e(name(x.driver_id))+' · Перенесено з попереднього обліку</div></div><b>'+money(Math.max(0,Number(x.amount)-Number(x.paid_amount||0)))+'</b></div>').join('')+((data||[]).length?data.map(x=>'<div class="line"><div><b>'+e(carName(x.car_id))+'</b> · '+e(x.week_start)+'<div class="small">'+e(name(x.driver_id))+' · '+(x.status==='overdue'?'🔴 Прострочено':x.status==='paid'?'Сплачено':'Очікує оплати')+' · до понеділка 12:00</div></div><b>'+money(Math.max(0,Number(x.amount_due)-Number(x.paid_amount||0)))+'</b></div>').join(''):'<p class="small">Нових нарахувань поки немає.</p>');
  }catch(err){const el=target;if(el&&current())el.textContent='Не вдалося оновити нарахування: '+(err.message||err);if(debtTarget?.isConnected)debtTarget.textContent='Не вдалося оновити борги: '+(err.message||err);}
 }
 function paymentsPage(){
