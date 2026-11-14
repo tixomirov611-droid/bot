@@ -795,9 +795,16 @@ function parseTechPassport(text){
  }
 
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
- const certCandidates=[certSource,...lines.filter(x=>/(?:СТІ|СТI|CTI|СХІ|CXI|СХI|САА|CAA)\s*(?:№|N[o°.]?)?\s*\d{6}/i.test(x)),joined];
- const cert=certCandidates.map(x=>(x.match(/(?:^|[^A-ZА-ЯІЇЄ])([A-ZА-ЯІЇЄ]{2,3})\s*(?:№|N[o°.]?)?\s*(\d{6})(?!\d)/i)||[])).find(x=>x[1]&&x[2]);
- const registration_certificate=cert?cert[1].toUpperCase()+' № '+cert[2]:'';
+ // Prefer explicit №: the serial at the bottom is not field A (vehicle plate).
+ const certText=String(certSource+'\n'+raw).toUpperCase();
+ const certPattern=/(?:^|[^A-ZА-ЯІЇЄ0-9])([A-ZА-ЯІЇЄ]{3})\s*(?:№|N[OО°º.]?[EЕ]?|М[ОO]|NO\.)\s*([0-9OОІI]{6})(?![A-ZА-ЯІЇЄ0-9])/g;
+ const explicit=[...certText.matchAll(certPattern)];
+ const plain=[...certText.matchAll(/(?:^|[^A-ZА-ЯІЇЄ0-9])([A-ZА-ЯІЇЄ]{3})\s+(\d{6})(?![A-ZА-ЯІЇЄ0-9])/g)];
+ const normalizeSeries=v=>v.replace(/[CTIXABEKMHOP]/g,c=>({'C':'С','T':'Т','I':'І','X':'Х','A':'А','B':'В','E':'Е','K':'К','M':'М','H':'Н','O':'О','P':'Р'}[c]));
+ const candidates=(explicit.length?explicit:plain).map(m=>normalizeSeries(m[1])+' № '+m[2].replace(/[OО]/g,'0').replace(/[ІI]/g,'1'));
+ const uniqueCerts=[...new Set(candidates)];
+ const registration_certificate=uniqueCerts.length===1?uniqueCerts[0]:'';
+
  return {plate,model:cleanedModel,year,vin,registration_certificate};
 }
 function applyPassportOcrFields(values){
@@ -828,33 +835,60 @@ async function readTechPassport(file){
    const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';script.onload=ok;script.onerror=fail;document.head.appendChild(script);
   });
   worker=await window.Tesseract.createWorker('eng+ukr',1);
-  let best={};let filled=0;
-  const merge=(found)=>{
-   for(const key of ['plate','model','vin','year','registration_certificate'])if(found[key]&&!best[key])best[key]=found[key];
-   filled+=applyPassportOcrFields(found);
+  let best={};let filled=0;const scores={};
+  const merge=(found,confidence=0)=>{
+   for(const key of ['plate','model','vin','year','registration_certificate']){
+    if(found[key]&&(!best[key]||confidence>(scores[key]||0))){best[key]=found[key];scores[key]=confidence;}
+   }
   };
   let bitmap=null;
   try{bitmap=await createImageBitmap(file);}catch(_){}
   if(bitmap){
    try{
-    const ratio=Math.min(1,1400/Math.max(bitmap.width,bitmap.height));
+    const ratio=Math.min(2,2200/Math.max(bitmap.width,bitmap.height));
     const w=Math.max(1,Math.round(bitmap.width*ratio)),h=Math.max(1,Math.round(bitmap.height*ratio));
-    const angles=[0,90,270,180];
+    const angles=[0,90,270,180];let bestAngle=0,bestOrientationScore=-1;
+    const draw=(angle)=>{
+     const rotated=angle===90||angle===270,canvas=document.createElement('canvas');
+     canvas.width=rotated?h:w;canvas.height=rotated?w:h;
+     const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(bitmap,-w/2,-h/2,w,h);return canvas;
+    };
+    await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
     for(let i=0;i<angles.length;i++){
-     const angle=angles[i],rotated=angle===90||angle===270;
+     const angle=angles[i];
      status.textContent='Розпізнавання техпаспорта: '+(i+1)+'/4 орієнтацій…';
-     const canvas=document.createElement('canvas');canvas.width=rotated?h:w;canvas.height=rotated?w:h;
-     const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(bitmap,-w/2,-h/2,w,h);
-     const scan=await worker.recognize(canvas);
-     merge(parseTechPassport(scan.data.text||''));
+     const canvas=draw(angle);
+     const scan=await worker.recognize(canvas);const found=parseTechPassport(scan.data.text||'');
+     const score=Object.values(found).filter(Boolean).length*100+(scan.data.confidence||0);
+     if(score>bestOrientationScore){bestOrientationScore=score;bestAngle=angle;}
+     merge(found,scan.data.confidence||0);
      canvas.width=1;canvas.height=1;
-     if(best.plate&&best.vin&&best.model)break;
+     if(best.plate&&best.vin&&best.model&&best.year&&best.registration_certificate)break;
     }
+    status.textContent='Уточнення дрібного тексту та номера техпаспорта…';
+    const oriented=draw(bestAngle);
+    try{
+     // Lower half includes the document serial; enlarge it without shrinking the whole card.
+     const crop=document.createElement('canvas');const top=Math.floor(oriented.height*0.45);
+     const scale=Math.min(2,2600/oriented.width);crop.width=Math.round(oriented.width*scale);crop.height=Math.round((oriented.height-top)*scale);
+     const ctx=crop.getContext('2d');ctx.drawImage(oriented,0,top,oriented.width,oriented.height-top,0,0,crop.width,crop.height);
+     const pixels=ctx.getImageData(0,0,crop.width,crop.height);
+     for(let k=0;k<pixels.data.length;k+=4){const gray=0.299*pixels.data[k]+0.587*pixels.data[k+1]+0.114*pixels.data[k+2];const v=Math.max(0,Math.min(255,(gray-128)*1.5+128));pixels.data[k]=pixels.data[k+1]=pixels.data[k+2]=v;}
+     ctx.putImageData(pixels,0,0);
+     const detail=await worker.recognize(crop);const cert=parseTechPassport(detail.data.text||'').registration_certificate;
+     if(cert)merge({registration_certificate:cert},detail.data.confidence||0);
+     crop.width=1;crop.height=1;
+     if(!best.year||!best.vin||!best.model||!best.plate){
+      await worker.setParameters({tessedit_pageseg_mode:'6'});
+      const block=await worker.recognize(oriented);merge(parseTechPassport(block.data.text||''),block.data.confidence||0);
+     }
+    }catch(err){console.warn('Passport detail scan failed',err);}finally{oriented.width=1;oriented.height=1;}
    }finally{bitmap.close();}
   }else{
    status.textContent='Розпізнавання техпаспорта…';
    const scan=await worker.recognize(file);merge(parseTechPassport(scan.data.text||''));
   }
+  filled=applyPassportOcrFields(best);
   const form=document.getElementById('new-car');const present=['plate','model','vin','year','registration_certificate'].filter(key=>form?.elements.namedItem(key)?.value?.trim());const missing=['plate','model','vin','year','registration_certificate'].filter(key=>!present.includes(key));status.textContent=(filled?'Додано '+filled+' нових полів. ':'')+'Заповнено '+present.length+'/5. '+(missing.length?'Ще потрібно перевірити: '+missing.map(x=>({plate:'держномер',model:'марку й модель',vin:'VIN',year:'рік',registration_certificate:'серію техпаспорта'}[x])).join(', ')+'.':'Перевірте дані перед збереженням.');
  }catch(err){console.warn('Passport OCR failed',err);status.textContent='Розпізнавання не завершилось. Фото прикріплені; можна повторити або заповнити вручну.';}
  finally{
