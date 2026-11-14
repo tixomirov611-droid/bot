@@ -780,7 +780,7 @@ async function readTechPassport(file){
    if(field&&values[name]&&(!field.value.trim()||name==='plate'&&field.dataset.ocrFilled==='1')){field.value=values[name];field.dataset.ocrFilled='1';filled++;}
   }
   form.dataset.dirty='1';captureNewCarDraft();
-  if(!values.year&&!form.elements.namedItem('year')?.value)requestManualCarYear(form);
+  // Do not interrupt OCR with an iOS validation bubble; show the inline hint below.
   const vinPreview=document.getElementById('tech-passport-vin');
   if(vinPreview)vinPreview.textContent=values.vin?'VIN: '+values.vin+' (перевірте перед збереженням)':'VIN не розпізнано';
   status.textContent=filled?'Заповнено полів: '+filled+'. '+(!values.plate?'Держномер не знайдено — введіть вручну. ':'')+(!values.year?'Рік випуску не вказаний — не беремо дату оновлення Дії. ':'')+'Перевірте дані. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
