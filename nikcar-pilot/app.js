@@ -735,9 +735,10 @@ async function nikcarEnablePush(){
 }
 function accountPage(){return `<div class="cards account-grid"><div class="card"><h2>${t('accountState')}</h2><div class="line"><span>${t('role')}</span>${status(me.role)}</div><div class="line"><span>${t('access')}</span>${status(me.access)}</div><form class="form" id="profile-update" style="margin-top:14px"><div class="profile-photo-row">${me.avatar_path?privatePhoto(me.avatar_path,'driver-avatar large',me.full_name,'./icon.svg'):'<span class="driver-avatar large driver-initial">' + e((me.full_name||'?').trim().charAt(0).toUpperCase()) + '</span>'}<label class="field">Фото профілю (до 5 МБ)<input name="avatar_photo" type="file" accept="image/jpeg,image/png,image/webp"></label></div><label class="field">${t('fullname')}<input name="fullname" maxlength="150" value="${e(me.full_name)}"></label><label class="field">${t('phone')}<input name="phone" maxlength="40" value="${e(me.phone||'')}"></label><button class="btn" type="submit">${t('saveProfile')}</button></form></div><div class="card"><h2>🔔 Push-сповіщення</h2><p class="small">Дозвольте сповіщення, щоб отримувати повідомлення NikCar на цьому пристрої. На iPhone відкрийте встановлений на початковому екрані застосунок.</p><button class="btn" type="button" id="nikcar-push-enable">Увімкнути сповіщення</button><p class="small">Реєстрація пристрою доступна. Серверна доставка повідомлень ще налаштовується.</p></div><div class="card"><h2>${t('account')}</h2><p>${e(user.email||'')}</p><p>${t('deleteNotice')}</p><p class="banner warning">${t(isOwner()?'paymentsStatus':'paymentHint')}</p><button class="btn secondary" data-action="change-password">${lang==='uk'?'Змінити пароль':'Change password'}</button> <button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`}
 let passportOcrBusy=false;
+const passportOcrQueue=[];
 const pendingPassportPhotos={front:null,back:null};
 function updatePassportAttachments(){const el=document.getElementById('tech-passport-attachments');if(el)el.textContent='Лицьова: '+(pendingPassportPhotos.front?.name||'не вибрана')+' · Зворотна: '+(pendingPassportPhotos.back?.name||'не вибрана')+'. Фото зберігаються після створення авто.';}
-function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
+function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;passportOcrQueue.length=0;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
@@ -763,11 +764,15 @@ function parseTechPassport(text){
  const yearMatch=yearSource.match(/\b(?:19|20)\d{2}\b/);
  const year=yearMatch?yearMatch[0]:'';
  const cleanedModel=[make,model].map(x=>x.replace(/\s{2,}.*/,'').trim()).filter(Boolean).join(' ').slice(0,120);
- return {plate,model:cleanedModel,year,vin};
+ const certLabel=extract(/^(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*:/i);
+ const certCode=code('B')||'';
+ const cert=(certLabel||certCode).match(/\b[A-ZА-ЯІЇЄ]{2,3}\s*[0-9]{5,8}\b/i)?.[0]?.replace(/\s/g,'')||'';
+ return {plate,model:cleanedModel,year,vin,registration_certificate:cert};
 }
 async function readTechPassport(file){
  const status=document.getElementById('tech-passport-status');
- if(!status||passportOcrBusy||!isOwner())return;
+ if(!status||!isOwner())return;
+ if(passportOcrBusy){passportOcrQueue.push(file);status.textContent='Фото додано. Очікує розпізнавання…';return;}
  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>6291456){status.textContent='Лише JPG, PNG, WEBP до 6 МБ';return;}
  passportOcrBusy=true;status.textContent='Розпізнавання фото або скриншота Дії…';
  try{
@@ -787,7 +792,7 @@ async function readTechPassport(file){
      const canvas=document.createElement('canvas');canvas.width=rotated?h:w;canvas.height=rotated?w:h;
      const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);ctx.drawImage(image,-w/2,-h/2,w,h);
      const scanned=await worker.recognize(canvas);const text=String(scanned.data.text||'');const found=parseTechPassport(text);
-     const score=(found.plate?8:0)+(found.vin?7:0)+(found.model?4:0)+(found.year?3:0)+Math.min(text.trim().length/150,2);
+     const score=(found.plate?8:0)+(found.vin?7:0)+(found.model?4:0)+(found.year?3:0)+(found.registration_certificate?3:0)+Math.min(text.trim().length/150,2);
      if(score>bestScore){bestScore=score;bestText=text;}
      if(found.plate&&found.vin&&found.model)break;
     }
@@ -800,9 +805,9 @@ async function readTechPassport(file){
   const values=parseTechPassport(result.data.text),form=document.getElementById('new-car');
   if(!form)return;
   let filled=0;
-  for(const name of ['plate','model','vin','year']){
+  for(const name of ['plate','model','vin','year','registration_certificate']){
    const field=form.elements.namedItem(name);
-   if(field&&values[name]&&(!field.value.trim()||name==='plate'&&field.dataset.ocrFilled==='1')){field.value=values[name];field.dataset.ocrFilled='1';filled++;}
+   if(field&&values[name]&&(!field.value.trim()||field.dataset.ocrFilled==='1')){field.value=values[name];field.dataset.ocrFilled='1';filled++;}
   }
   form.dataset.dirty='1';captureNewCarDraft();
   // Do not interrupt OCR with an iOS validation bubble; show the inline hint below.
@@ -810,7 +815,7 @@ async function readTechPassport(file){
   if(vinPreview)vinPreview.textContent=values.vin?'VIN: '+values.vin+' (перевірте перед збереженням)':'VIN не розпізнано';
   status.textContent=filled?'Заповнено полів: '+filled+'. '+(!values.plate?'Держномер не знайдено — введіть вручну. ':'')+(!values.year?'Рік випуску не вказаний — не беремо дату оновлення Дії. ':'')+'Перевірте дані. Тариф введіть вручну.':'Не вдалося впевнено визначити марку, модель або номер. Заповніть поля вручну.';
  }catch(err){status.textContent='Не вдалося розпізнати. Перевірте інтернет для завантаження OCR або введіть дані вручну.';}
- finally{passportOcrBusy=false;updatePassportAttachments();}
+ finally{passportOcrBusy=false;updatePassportAttachments();const next=passportOcrQueue.shift();if(next)void readTechPassport(next);}
 }
 // Keep the owner's new-car draft while navigating between tabs or refreshing data.
 // In-memory only: no personal data, credentials or unfinished forms in browser storage.
@@ -824,7 +829,7 @@ function readNewCarDraft(){
  try{
   const values=JSON.parse(sessionStorage.getItem('nikcar-car-draft:'+user.id)||'null');
   if(values&&typeof values==='object'&&!Array.isArray(values)){
-   newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate'].map(k=>[k,typeof values[k]==='string'?values[k]:'']))};
+   newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate','registration_certificate'].map(k=>[k,typeof values[k]==='string'?values[k]:'']))};
   }
  }catch(_){}
 }
