@@ -1016,3 +1016,27 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 @media(prefers-reduced-motion:reduce){
  :root[data-theme="dark"] .metric-link{transition:none}
 }
+
+
+/* NikCar 1.25.5 — prominent financial hero matching graphite/lime reference */
+:root[data-theme="dark"] .nikcar-income-hero{
+ margin:20px 0 22px!important;padding:24px!important;
+ border-radius:29px!important;border:1px solid rgba(227,255,105,.38)!important;
+ background:radial-gradient(circle at 100% 0%,rgba(255,255,255,.27),transparent 38%),linear-gradient(130deg,#eaff68 0%,#d9ff38 58%,#bde924 100%)!important;
+ box-shadow:0 12px 38px rgba(147,192,20,.13)!important;color:#172009!important;
+}
+.nikcar-income-top,.nikcar-income-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.nikcar-income-eyebrow{font-size:11px;font-weight:900;letter-spacing:1.4px}
+.nikcar-income-indicator{font-size:10px;font-weight:850;letter-spacing:1px}
+.nikcar-income-label{margin-top:22px;font-size:13px;font-weight:700}
+.nikcar-income-amount{font-size:clamp(32px,7.4vw,58px)!important;font-weight:900!important;letter-spacing:-2px;line-height:1.12;margin:8px 0 22px!important;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.nikcar-income-caption{font-size:11px;font-weight:650;line-height:1.45;max-width:260px}
+.nikcar-income-action{border:0;border-radius:999px;padding:11px 15px;background:#181c14;color:#eaff79;font-weight:800;white-space:nowrap}
+.nikcar-income-action:focus-visible{outline:3px solid #161a12;outline-offset:3px}
+:root:not([data-theme="dark"]) .nikcar-income-hero{background:linear-gradient(130deg,#e6f7aa,#c8ee61);border-color:#c3e67e;color:#1c2912}
+@media(max-width:680px){
+ .nikcar-income-hero{padding:21px!important;border-radius:25px!important}
+ .nikcar-income-amount{font-size:clamp(32px,9vw,46px)!important}
+ .nikcar-income-bottom{align-items:flex-end}
+ .nikcar-income-caption{max-width:195px}
+}
