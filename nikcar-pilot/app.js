@@ -1605,9 +1605,14 @@ if(formId==='fuel-price-form'){
   const screenshot=f.get('fine_screenshot');let photoPath='';
   if(screenshot&&screenshot.size){photoPath='fines/'+user.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+photoExt(screenshot);await uploadFleetPhotoWithRetry(screenshot,photoPath);}
   const fineNote='Штраф: '+baseAmount.toFixed(2)+' ₴; збір NikCar 10%: '+(amount-baseAmount).toFixed(2)+' ₴'+(photoPath?'; скріншот: '+photoPath:'')+(String(f.get('notes')||'').trim()?'; '+String(f.get('notes')||'').trim():'');
-  const {error}=await sb.from('fleet_fines').insert({car_id,notice_number,violation_at:new Date(violation).toISOString(),amount,notes:fineNote.slice(0,500),source:'manual'});
+  const {data:createdFine,error}=await sb.from('fleet_fines').insert({car_id,notice_number,violation_at:new Date(violation).toISOString(),amount,notes:fineNote.slice(0,500),source:'manual'}).select('id,status,driver_id').single();
   if(error)throw error;
-  form.reset();forceMutationRefresh++;await load();toast('Штраф зареєстровано. Водія визначено за періодом оренди.');return;
+  form.reset();forceMutationRefresh++;await load();
+  if(createdFine?.status==='assigned'&&createdFine?.driver_id){
+   try{const {error:pushError}=await sb.functions.invoke('nikcar-chat-push',{body:{fine_id:createdFine.id}});if(pushError)console.warn('Fine push delivery pending',pushError);}
+   catch(pushError){console.warn('Fine push unavailable',pushError);}
+  }
+  toast('Штраф зареєстровано. Push буде надіслано водію за наявності підписки.');return;
  }
  if(formId==='cash-payment-form'){if(!canApply())return;const rentalId=String(f.get('rental')||'');if(!records.rental_requests.some(r=>r.id===rentalId&&r.driver_id===me.id&&r.status==='approved'))throw Error(t('noApprovedRental'));const amount=Number(f.get('amount'));if(!(amount>0&&amount<=1000000))throw Error(t('amount'));const purpose=String(f.get('purpose')||'');if(!['rent','fuel_points','fine'].includes(purpose))throw Error('Оберіть призначення платежу');if(!window.confirm(t('paymentHint')))return;const selectedMethod=String(f.get('method')||'');if(!['card_transfer','monobank_transfer','cash'].includes(selectedMethod))throw Error('Оберіть спосіб оплати');const bank=selectedMethod==='monobank_transfer'?'monobank':selectedMethod==='card_transfer'?'Privat24':'Готівка';const note='['+purpose+']['+bank+'] '+String(f.get('note')||'').trim();await mutation(sb.from('payment_claims').insert({driver_id:me.id,rental_request_id:rentalId,method:selectedMethod==='monobank_transfer'?'card_transfer':selectedMethod,amount,driver_note:note.trim()}),t('declared'));return;}
  if(formId==='tracking-asset-form'){if(!isOwner())return;const title=String(f.get('title')||'').trim();if(title.length<2)throw Error('Вкажіть назву техніки');const {error}=await sb.from('fleet_tracking_assets').insert({title,category:String(f.get('category')||'other'),car_id:String(f.get('car_id')||'')||null,provider:String(f.get('provider')||'').trim()||null,device_identifier:String(f.get('device_identifier')||'').trim()||null,sim_phone:String(f.get('sim_phone')||'').trim()||null,note:String(f.get('note')||'').trim()||null});if(error)throw error;form.reset();forceMutationRefresh++;await load();toast('Техніку додано до реєстру');return;}
