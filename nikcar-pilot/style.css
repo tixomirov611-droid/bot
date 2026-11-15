@@ -1040,3 +1040,36 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .nikcar-income-bottom{align-items:flex-end}
  .nikcar-income-caption{max-width:195px}
 }
+
+
+/* NikCar finance UI refinement — clear cards and mobile-first grouping */
+.nikcar-accountant-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.nikcar-accountant-layout>.card{min-width:0}
+.nikcar-section-eyebrow{font-size:10px;font-weight:900;letter-spacing:2px;color:var(--accent-dark);margin-bottom:9px}
+.nikcar-accountant-layout h2,.nikcar-accountant-layout h3{letter-spacing:-.4px;line-height:1.25}
+.nikcar-accountant-layout h3{font-size:19px;margin:10px 0 12px}
+.nikcar-accountant-layout .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.nikcar-accountant-layout .metric{min-width:0;border-radius:20px;padding:18px;overflow-wrap:anywhere}
+.nikcar-accountant-layout .metric-value{font-size:clamp(19px,2.5vw,29px);font-variant-numeric:tabular-nums;letter-spacing:-.7px;overflow-wrap:anywhere}
+.nikcar-accountant-layout .field{min-width:0}
+.nikcar-accountant-layout .row.stack{gap:10px;flex-wrap:wrap}
+.nikcar-accountant-layout .row.stack>.field{flex:1 1 200px}
+.nikcar-accountant-layout .row.stack>.btn{align-self:end}
+.nikcar-accountant-layout .line{min-width:0;overflow-wrap:anywhere}
+:root[data-theme="dark"] .nikcar-accountant-overview{background:radial-gradient(ellipse at 90% 0%,rgba(217,255,58,.095),transparent 55%),linear-gradient(155deg,#20241c,#151815)!important}
+:root[data-theme="dark"] .nikcar-accountant-layout .metric{background:#22271d;border:1px solid rgba(215,255,70,.11)}
+:root[data-theme="dark"] .nikcar-accountant-layout .metric:first-child{background:linear-gradient(135deg,#dcff4c,#bce632);border-color:#caff4b;color:#1a220c}
+:root[data-theme="dark"] .nikcar-accountant-layout .metric:first-child .small,
+:root[data-theme="dark"] .nikcar-accountant-layout .metric:first-child .metric-value{color:#1a220c!important}
+:root[data-theme="dark"] .nikcar-accountant-layout .metric:first-child .metric-value{font-weight:900}
+:root[data-theme="dark"] .nikcar-accountant-layout .nikcar-accountant-followups{border-color:rgba(216,255,59,.2)}
+@media(max-width:760px){
+ .nikcar-accountant-layout{gap:12px}
+ .nikcar-accountant-layout .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .nikcar-accountant-layout .metric{padding:14px;border-radius:17px}
+ .nikcar-accountant-layout .metric-value{font-size:clamp(17px,5vw,24px)}
+ .nikcar-accountant-layout .row.stack{flex-direction:column;align-items:stretch}
+ .nikcar-accountant-layout .row.stack>.field{flex-basis:auto;width:100%}
+ .nikcar-accountant-layout .row.stack>.btn{width:100%;align-self:stretch;min-height:45px}
+}
+@media(max-width:370px){.nikcar-accountant-layout .metric-grid{grid-template-columns:1fr}}
