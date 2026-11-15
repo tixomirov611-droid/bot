@@ -128,6 +128,9 @@ let forceMutationRefresh=0;
 // Keep user-entered data intact while background Realtime/visibility updates arrive.
 function hasUnsavedForm(){return !!document.querySelector('form[data-dirty="1"],form[data-submitting="1"]');}
 const inFlightActions=new Set();
+const inFlightForms=new Set();
+const recentlyCompletedActions=new Map();
+const ACTION_COOLDOWN_MS=12000;
 const actionGroups={
  'confirm-payment':'payment','reject-payment':'payment',
  'approve-request':'rental','reject-request':'rental','cancel-request':'rental',
@@ -1688,9 +1691,9 @@ document.addEventListener('click',evt=>{
  const action=b.dataset.action,key=(actionGroups[action]||action)+':'+(b.dataset.id||'');
  if(isOffline()&&protectedActions.has(action)){toast(offlineMessage());return;}
  if(!protectedActions.has(action)){void clickAction(b).catch(err=>toast(err.message||err));return;}
- if(inFlightActions.has(key))return;
+ if(inFlightActions.has(key)||((recentlyCompletedActions.get(key)||0)>Date.now()))return;
  inFlightActions.add(key);b.disabled=true;
- void clickAction(b).catch(err=>toast(err.message||err)).finally(()=>{
+ void clickAction(b).then(()=>{recentlyCompletedActions.set(key,Date.now()+ACTION_COOLDOWN_MS);}).catch(err=>toast(err.message||err)).finally(()=>{
   inFlightActions.delete(key);
   if(b.isConnected)b.disabled=false;
  });
@@ -1778,7 +1781,7 @@ document.addEventListener('input',evt=>{if(['service-search','fleet-file-search'
 document.addEventListener('change',evt=>{if(['service-car-filter','service-state-filter','fleet-file-car-filter','fleet-file-kind-filter'].includes(evt.target.id))filterFleetRows();});
 document.addEventListener('input',evt=>{const form=evt.target.closest?.('form');if(form){form.dataset.dirty='1';if(isOwner()&&form.id&&form.id!=='new-car')captureOwnerUiDraft();}if(form?.id==='new-car')captureNewCarDraft();if(evt.target.id==='driver-filter')filterDriverCards()});
 document.addEventListener('change',evt=>{const form=evt.target.closest?.('form');if(form){form.dataset.dirty='1';if(isOwner()&&form.id&&form.id!=='new-car')captureOwnerUiDraft();}if(evt.target.matches('select[data-action="language"]')){lang='uk';localStorage.setItem('nikcar-lang','uk');render();}});
-document.addEventListener('submit',async evt=>{const form=evt.target;const formId=form.getAttribute?.('id')||form.id;if(formId==='nikcar-contract-owner'){evt.preventDefault();if(!isOwner())return;const f=new FormData(form);const tax=String(f.get('owner_tax')||'').trim();if(tax&&!/^\d{10}$/.test(tax)){toast('РНОКПП має містити 10 цифр');return}localStorage.setItem('nikcar-contract-owner-v1',JSON.stringify({name:String(f.get('owner_name')||'').trim(),tax,doc:String(f.get('owner_doc')||'').trim(),address:String(f.get('owner_address')||'').trim(),phone:String(f.get('owner_phone')||'').trim()}));toast('Реквізити збережено на цьому пристрої');return}if(!form.matches('[data-sto-update]')&&!['nikcar-sto-create','auth-form','new-car','edit-car-form','import-existing-rental','nikcar-import-mileage-form','nikcar-manual-debt-form','nikcar-car-upgrade-form','announcement-form','chat-send','sos-create','profile-update','nikcar-birthday-form','cash-payment-form','repair-create','repair-add-part','new-password-form','service-event','fleet-inspection-form','fleet-file-form','fleet-damage-ai-form','nikcar-ai-question','tracking-asset-form','api-key-create-form','point-post-form','fleet-fine-form','fuel-price-form'].includes(formId)&&!form.matches('.rental-odometer-form'))return;evt.preventDefault();if(form.dataset.submitting==='1')return;form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
+document.addEventListener('submit',async evt=>{const form=evt.target;const formId=form.getAttribute?.('id')||form.id;if(formId==='nikcar-contract-owner'){evt.preventDefault();if(!isOwner())return;const f=new FormData(form);const tax=String(f.get('owner_tax')||'').trim();if(tax&&!/^\d{10}$/.test(tax)){toast('РНОКПП має містити 10 цифр');return}localStorage.setItem('nikcar-contract-owner-v1',JSON.stringify({name:String(f.get('owner_name')||'').trim(),tax,doc:String(f.get('owner_doc')||'').trim(),address:String(f.get('owner_address')||'').trim(),phone:String(f.get('owner_phone')||'').trim()}));toast('Реквізити збережено на цьому пристрої');return}if(!form.matches('[data-sto-update]')&&!['nikcar-sto-create','auth-form','new-car','edit-car-form','import-existing-rental','nikcar-import-mileage-form','nikcar-manual-debt-form','nikcar-car-upgrade-form','announcement-form','chat-send','sos-create','profile-update','nikcar-birthday-form','cash-payment-form','repair-create','repair-add-part','new-password-form','service-event','fleet-inspection-form','fleet-file-form','fleet-damage-ai-form','nikcar-ai-question','tracking-asset-form','api-key-create-form','point-post-form','fleet-fine-form','fuel-price-form'].includes(formId)&&!form.matches('.rental-odometer-form'))return;evt.preventDefault();if(form.dataset.submitting==='1')return;const submissionKey=(user?.id||'guest')+':'+formId+':'+(form.dataset.request||form.dataset.id||'');if(inFlightForms.has(submissionKey))return;inFlightForms.add(submissionKey);form.dataset.submitting='1';const submitBtn=form.querySelector('button[type="submit"]');if(submitBtn)submitBtn.disabled=true;const f=new FormData(form);try{
  if(isOffline())throw new Error(offlineMessage());
  if(form.matches('.rental-odometer-form')){if(!isOwner())throw Error('Доступ лише власнику');const request=records.rental_requests.find(r=>r.id===form.dataset.request);if(!request||request.status!=='approved')throw Error('Заявка вже змінила статус. Оновіть сторінку.');const handing=form.dataset.mode==='handover';if(handing&&request.handed_over_at)throw Error('Авто вже видано');if(!handing&&(!request.handed_over_at||request.returned_at))throw Error('Авто вже повернуто або ще не видано');const raw=String(f.get('odometer')??'').trim().replace(/[\s\u00a0]/g,'');const odometer=Number(raw);if(raw===''||!Number.isSafeInteger(odometer)||odometer<0||odometer>3000000)throw Error('Пробіг має бути цілим числом від 0 до 3000000 км. Введено: '+raw);if(!handing&&odometer<Number(request.odometer_out_km))throw Error('Пробіг при поверненні не може бути меншим за пробіг при видачі');if(f.get('full_tank')!=='on')throw Error('Підтвердіть повний бак');const {error}=await sb.rpc(handing?'nikcar_handover_rental':'nikcar_return_rental',{p_request:request.id,p_odometer:odometer,p_full_tank:true,p_note:String(f.get('note')||'').slice(0,2000)});if(error)throw error;toast(handing?'Авто видано':'Авто повернуто');forceMutationRefresh++;await load();return;}
  if(formId==='nikcar-sto-create'||form.matches('[data-sto-update]')){
@@ -1871,15 +1874,16 @@ if(formId==='fuel-price-form'){
  const file=f.get('receipt'),hasReceipt=file instanceof File&&file.size>0;
  if(selectedMethod!=='cash'&&!hasReceipt)throw Error('Додайте скріншот підтвердження переказу');
  if(hasReceipt&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024))throw Error('Скріншот: JPG, PNG або WebP до 5 МБ');
- const paymentId=crypto.randomUUID();
+ const paymentId=form.dataset.paymentAttemptId||crypto.randomUUID();
+ form.dataset.paymentAttemptId=paymentId;
  let receiptPath=null;
  if(hasReceipt){
   receiptPath=me.id+'/'+paymentId+'.'+photoExt(file);
   const {error:uploadError}=await sb.storage.from('nikcar-payment-receipts').upload(receiptPath,file,{contentType:file.type,upsert:false});
-  if(uploadError)throw uploadError;
+  if(uploadError&&!String(uploadError.message||'').toLowerCase().includes('already exists'))throw uploadError;
  }
  const {error:paymentError}=await sb.rpc('nikcar_submit_payment_with_receipt',{p_id:paymentId,p_rental:rentalId,p_amount:amount,p_method:selectedMethod==='cash'?'cash':'card_transfer',p_note:note.trim(),p_receipt_path:receiptPath});
- if(paymentError){if(receiptPath){try{await sb.storage.from('nikcar-payment-receipts').remove([receiptPath]);}catch(cleanupError){console.warn('Receipt cleanup deferred',cleanupError);}}throw paymentError;}
+ if(paymentError){throw paymentError;}form.dataset.paymentAttemptId='';
  toast('Заявку надіслано на перевірку'+(receiptPath?' разом зі скріншотом':''));forceMutationRefresh++;await load();return;}
  if(formId==='tracking-asset-form'){if(!isOwner())return;const title=String(f.get('title')||'').trim();if(title.length<2)throw Error('Вкажіть назву техніки');const {error}=await sb.from('fleet_tracking_assets').insert({title,category:String(f.get('category')||'other'),car_id:String(f.get('car_id')||'')||null,provider:String(f.get('provider')||'').trim()||null,device_identifier:String(f.get('device_identifier')||'').trim()||null,sim_phone:String(f.get('sim_phone')||'').trim()||null,note:String(f.get('note')||'').trim()||null});if(error)throw error;form.reset();forceMutationRefresh++;await load();toast('Техніку додано до реєстру');return;}
  if(formId==='nikcar-ai-memory-form'){if(!isOwner())return;const note=String(f.get('note')||'').trim();if(note.length<3||note.length>1000)throw Error('Правило: 3–1000 символів');const {error}=await sb.from('nikcar_ai_memory').insert({note,created_by:user.id});if(error)throw error;await refreshAiMemory(true);toast('Збережено');return;}if(formId==='nikcar-ai-question'){if(!isOwner())return;aiQuestion=String(f.get('question')||'').trim();aiAnswer=nikcarAiRespond(aiQuestion);render();return;}
@@ -2027,7 +2031,7 @@ if(formId==='fuel-price-form'){
  if(error)throw error;toast('Налаштування дня народження збережено');forceMutationRefresh++;await load();return;
  }
  if(formId==='profile-update'){const file=form.querySelector('[name=avatar_photo]')?.files?.[0];let avatar_path=me.avatar_path;if(file)avatar_path=await uploadFleetPhoto(file,'avatars/'+me.id+'/profile.'+photoExt(file));const update={full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()};if(file)update.avatar_path=avatar_path;await mutation(sb.from('profiles').update(update).eq('id',me.id));return;}
- }catch(err){if(formId==='auth-form'||formId==='new-password-form'){const op=formId==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(err.message||err);}finally{if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
+ }catch(err){if(formId==='auth-form'||formId==='new-password-form'){const op=formId==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(err.message||err);}finally{inFlightForms.delete(submissionKey);if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
 (async()=>{if(!configured){render();return;}try{
  const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
  sb=mod.createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
