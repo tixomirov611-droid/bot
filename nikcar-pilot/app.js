@@ -1385,17 +1385,37 @@ function restoreNewCarDraft(){
 // Preserve unfinished owner inputs and driver-access selections between tabs.
 // Never persist passwords, files, private documents or form data to localStorage.
 const ownerUiDrafts=new Map();
+// Session-scoped drafts: non-sensitive operational forms only; never persist passwords,
+// payment details, IDs, personal documents, files, or arbitrary owner forms.
+const NIKCAR_SAFE_DRAFT_FORMS=new Set(['new-car','repair-create','service-event','announcement-form']);
+const NIKCAR_DRAFT_TTL=24*60*60*1000;
+function nikcarDraftKey(formId){return 'nikcar-safe-draft-v2:'+user.id+':'+formId;}
+function nikcarSaveSafeDraft(form){
+ if(!user||!isOwner()||!NIKCAR_SAFE_DRAFT_FORMS.has(form.id)||form.id==='new-car'||form.dataset.dirty!=='1')return;
+ const values={};
+ for(const el of form.querySelectorAll('input,select,textarea')){
+  if(!el.name||['password','file','hidden','email','tel'].includes(el.type)||el.autocomplete==='off'&&el.type==='password')continue;
+  if(/(?:token|secret|key|passport|document|tax|phone|email|iban|card|payment|vin|plate)/i.test(el.name))continue;
+  values[el.name]=el.type==='checkbox'?el.checked:el.value;
+ }
+ try{sessionStorage.setItem(nikcarDraftKey(form.id),JSON.stringify({at:Date.now(),values}));}catch(_){}
+}
+function nikcarClearSafeDraft(formId){
+ if(!user||!NIKCAR_SAFE_DRAFT_FORMS.has(formId))return;
+ try{sessionStorage.removeItem(nikcarDraftKey(formId));}catch(_){}
+ ownerUiDrafts.delete(user.id+':'+formId);
+}
 function captureOwnerUiDraft(){
  if(!user||!isOwner())return;
- const forms=[...document.querySelectorAll('#root form')];
- for(const form of forms){
+ for(const form of document.querySelectorAll('#root form')){
   if(!form.id||['auth-form','profile-update','chat-send'].includes(form.id)||form.dataset.submitting==='1'||form.dataset.dirty!=='1')continue;
-  const fields=[...form.querySelectorAll('input,select,textarea')].filter(el=>
-   el.name&&el.type!=='password'&&el.type!=='file'&&el.type!=='hidden');
-  if(!fields.length)continue;
   const values={};
-  for(const el of fields)values[el.name]=el.type==='checkbox'?el.checked:el.value;
-  ownerUiDrafts.set(user.id+':'+form.id,values);
+  for(const el of form.querySelectorAll('input,select,textarea')){
+   if(!el.name||['password','file','hidden'].includes(el.type))continue;
+   values[el.name]=el.type==='checkbox'?el.checked:el.value;
+  }
+  if(Object.keys(values).length)ownerUiDrafts.set(user.id+':'+form.id,values);
+  nikcarSaveSafeDraft(form);
  }
  const selections={};
  document.querySelectorAll('select[data-driver-id]').forEach(el=>{selections[el.dataset.driverId]=el.value;});
@@ -1405,12 +1425,20 @@ function restoreOwnerUiDraft(){
  if(!user||!isOwner())return;
  for(const form of document.querySelectorAll('#root form')){
   if(!form.id||form.id==='new-car'||form.dataset.submitting==='1')continue;
-  const values=ownerUiDrafts.get(user.id+':'+form.id);
+  let values=ownerUiDrafts.get(user.id+':'+form.id);
+  if(!values&&NIKCAR_SAFE_DRAFT_FORMS.has(form.id)){
+   try{
+    const saved=JSON.parse(sessionStorage.getItem(nikcarDraftKey(form.id))||'null');
+    if(saved&&Date.now()-saved.at<NIKCAR_DRAFT_TTL)values=saved.values;
+    else if(saved)nikcarClearSafeDraft(form.id);
+   }catch(_){}
+  }
   if(!values)continue;
   for(const el of form.querySelectorAll('input,select,textarea')){
-   if(!el.name||!(el.name in values)||el.type==='password'||el.type==='file'||el.type==='hidden')continue;
+   if(!el.name||!(el.name in values)||['password','file','hidden'].includes(el.type))continue;
    if(el.type==='checkbox')el.checked=!!values[el.name];else el.value=values[el.name];
   }
+  form.dataset.dirty='1';
  }
  const selections=ownerUiDrafts.get(user.id+':driver-access')||{};
  document.querySelectorAll('select[data-driver-id]').forEach(el=>{
@@ -1905,9 +1933,9 @@ if(formId==='fuel-price-form'){
    due_odometer_km:dueKm?Number(dueKm):null,current_odometer_km:currentKm?Number(currentKm):null,
    notes:String(f.get('notes')||'').trim()
   });
-  if(error)throw error;ownerUiDrafts.delete(user.id+':service-event');form.reset();await load();return;
+  if(error)throw error;nikcarClearSafeDraft('service-event');form.reset();await load();return;
  }
- if(formId==='repair-create'){if(!isOwner())return;const title=String(f.get('title')||'').trim(),vin=String(f.get('vin')||'').trim().toUpperCase(),labor=Number(f.get('labor'));if(vin&&!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin))throw Error(t('repairVIN'));const {data,error}=await sb.from('repair_jobs').insert({car_id:String(f.get('car')),title,vin:vin||null,symptoms:String(f.get('symptoms')||'').trim(),labor_cost:labor,created_by:me.id}).select('id').single();if(error)throw error;currentRepair=data.id;toast(t('repairCreate'));await load();return;}
+ if(formId==='repair-create'){if(!isOwner())return;const title=String(f.get('title')||'').trim(),vin=String(f.get('vin')||'').trim().toUpperCase(),labor=Number(f.get('labor'));if(vin&&!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin))throw Error(t('repairVIN'));const {data,error}=await sb.from('repair_jobs').insert({car_id:String(f.get('car')),title,vin:vin||null,symptoms:String(f.get('symptoms')||'').trim(),labor_cost:labor,created_by:me.id}).select('id').single();if(error)throw error;currentRepair=data.id;nikcarClearSafeDraft('repair-create');toast(t('repairCreate'));await load();return;}
  if(formId==='repair-add-part'){if(!isOwner()||!currentRepair)return;const job=records.repair_jobs.find(j=>j.id===currentRepair);if(!job||job.status!=='draft')return;const price=Number(f.get('unit_price')),qty=Number(f.get('qty'));if(!Number.isFinite(price)||price<0||!Number.isFinite(qty)||qty<=0)throw Error(t('repairPrice'));await mutation(sb.from('repair_parts').insert({repair_id:currentRepair,item_name:String(f.get('item')||'').trim(),article:String(f.get('article')||'').trim(),supplier:String(f.get('supplier')||'').trim(),supplier_url:String(f.get('url')||'').trim(),quantity:qty,unit_price:price}));return;}
  if(formId==='announcement-form'){
   if(!isOwner())return;await mutation(sb.from('announcements').insert({author_id:me.id,title_uk:String(f.get('title_uk')||'').trim(),title_en:String(f.get('title_en')||'').trim(),body_uk:String(f.get('body_uk')||'').trim(),body_en:String(f.get('body_en')||'').trim(),pinned:f.get('pinned')==='on'}));return;
