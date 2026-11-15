@@ -1113,3 +1113,22 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .nikcar-dashboard-more-inner{padding:0 10px 10px}
 }
 @media(max-width:360px){.nikcar-fleet-metrics .metric{grid-template-columns:1fr;row-gap:3px}.nikcar-fleet-metrics .metric-icon{grid-row:auto;justify-content:flex-start}}
+
+
+/* NikCar 1.25.7 — compact expandable panels in operational sections */
+.nikcar-fold-card{min-width:0;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--surface);margin:0 0 12px}
+.nikcar-fold-summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;font-size:15px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+.nikcar-fold-summary::-webkit-details-marker{display:none}
+.nikcar-fold-summary>span:last-child{font-size:22px;line-height:1;flex:none;transition:transform .15s ease}
+.nikcar-fold-card[open]>.nikcar-fold-summary>span:last-child{transform:rotate(180deg)}
+.nikcar-fold-summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.nikcar-fold-card>.card{margin:0!important;border-radius:0 0 20px 20px!important;box-shadow:none!important;border:0!important;border-top:1px solid var(--line)!important}
+:root[data-theme="dark"] .nikcar-fold-card{background:#1b1e1a;border-color:#353d30}
+:root[data-theme="dark"] .nikcar-fold-card[open]>.nikcar-fold-summary{color:#dfff36}
+:root[data-theme="dark"] .nikcar-fold-card>.card{background:#171a17}
+@media(max-width:680px){
+ .nikcar-fold-card{border-radius:19px;margin-bottom:10px}
+ .nikcar-fold-summary{padding:15px;font-size:14px}
+ .nikcar-fold-card>.card{padding:15px!important}
+}
+@media(prefers-reduced-motion:reduce){.nikcar-fold-summary>span:last-child{transition:none}}
