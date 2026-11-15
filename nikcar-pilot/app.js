@@ -415,7 +415,7 @@ function isFleetDriverProfile(p){return p?.role==='driver'&&!staffAssignments.so
 function isServiceStaffProfile(p){return p?.role==='driver'&&staffAssignments.some(a=>a.profile_id===p.id&&['administrator','accountant','mechanic'].includes(a.staff_role));}
 function accountantPage(){
  if(!isOwner()&&!isAccountant())return '<div class="banner warning">Доступ лише бухгалтеру або власнику</div>';
- return '<div class="card"><h2>💼 Фінансовий огляд</h2><p class="small">Підтверджені надходження та борги автопарку. Режим перегляду: бухгалтер не може змінювати платежі, штрафи чи тарифи.</p><div id="nikcar-accountant-summary">Завантаження фінансових показників…</div><button class="btn secondary tiny" type="button" data-action="refresh-accountant">↻ Оновити</button></div>';
+ return '<div class="card"><h2>💼 Фінансовий огляд</h2><p class="small">Підтверджені надходження та борги автопарку. Режим перегляду: бухгалтер не може змінювати платежі, штрафи чи тарифи.</p><div id="nikcar-accountant-summary">Завантаження фінансових показників…</div><h3 style="margin-top:22px">📞 Обдзвін боржників</h3><p class="small">Контакти водіїв із непогашеною заборгованістю. Список упорядкований за сумою боргу.</p><div id="nikcar-accountant-debtors">Завантаження контактів…</div><button class="btn secondary tiny" type="button" data-action="refresh-accountant">↻ Оновити</button></div>';
 }
 async function nikcarLoadAccountantSummary(){
  const target=document.getElementById('nikcar-accountant-summary');
@@ -423,6 +423,7 @@ async function nikcarLoadAccountantSummary(){
  try{
   const {data,error}=await sb.rpc('nikcar_accountant_summary');if(error)throw error;
   if(!target.isConnected)return;
+  void nikcarLoadAccountantDebtors();
   const rent=Number(data.rent_due||0),fines=Number(data.fines_due||0),income=Number(data.rent_income||0);
   target.innerHTML='<div class="metric-grid">'+[
    ['💰 Надійшло за весь час (без штрафів)',income],
@@ -433,6 +434,20 @@ async function nikcarLoadAccountantSummary(){
    ['🧾 Очікують перевірки: '+Number(data.pending_payments||0),Number(data.pending_payment_amount||0)]
   ].map(([label,value])=>'<div class="metric"><div class="small">'+e(label)+'</div><div class="metric-value">'+money(value)+'</div></div>').join('')+'</div><p class="small">Показники розраховані з бази NikCar. Не включають непідтверджені платежі в дохід. Штрафи показані окремо від оренди.</p>';
  }catch(err){if(target.isConnected)target.textContent='Помилка завантаження: '+(err.message||String(err));}
+}
+async function nikcarLoadAccountantDebtors(){
+ const target=document.getElementById('nikcar-accountant-debtors');
+ if(!target||!sb||(!isOwner()&&!isAccountant()))return;
+ try{
+  const {data,error}=await sb.rpc('nikcar_accountant_debtors');if(error)throw error;
+  if(!target.isConnected)return;
+  const list=Array.isArray(data)?data:[];
+  target.innerHTML=list.length?list.map(x=>{
+   const phone=String(x.phone||'').trim(),tel=phone.replace(/[^+0-9]/g,'');
+   const call=tel.replace(/\D/g,'').length>=9?'<a class="btn secondary tiny" href="tel:'+e(tel)+'">📞 Зателефонувати</a>':'<span class="small">Номер не вказано</span>';
+   return '<div class="card" style="margin:10px 0"><div class="row stack" style="justify-content:space-between;align-items:center"><div><b>'+e(x.name||'Водій')+'</b><div class="small">Телефон: '+e(phone||'Не вказано')+'</div><div class="small">Оренда: '+money(Number(x.rent_debt||0))+' · Штрафи: '+money(Number(x.fine_debt||0))+'</div><strong>Разом: '+money(Number(x.total_debt||0))+'</strong></div>'+call+'</div></div>';
+  }).join(''):'<p class="small">Водіїв із непогашеними боргами немає.</p>';
+ }catch(err){if(target.isConnected)target.textContent='Не вдалося завантажити боржників: '+(err.message||String(err));}
 }
 function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const total=records.cars.length, drivers=records.profiles.filter(isFleetDriverProfile);
