@@ -1185,3 +1185,28 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .mobilebar, :root[data-theme="dark"] .mobilebar{width:calc(100% - 12px)!important;padding:5px 3px!important}
  .mobilebar>button, :root[data-theme="dark"] .mobilebar>button{font-size:8px!important;padding:5px 0!important}
 }
+
+/* NikCar 1.25.12 — landscape iPhone: dock must remain at screen bottom */
+@media (orientation:landscape) and (max-height:520px) and (pointer:coarse){
+ .sidebar{display:none!important}
+ .workspace{margin-left:0!important;width:100%!important}
+ .mobilebar, :root[data-theme="dark"] .mobilebar{
+  position:fixed!important;top:auto!important;bottom:calc(5px + env(safe-area-inset-bottom,0px))!important;
+  left:50%!important;right:auto!important;transform:translateX(-50%)!important;
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+  align-items:center!important;justify-content:space-between!important;
+  width:min(680px,calc(100% - 24px))!important;max-width:680px!important;
+  height:auto!important;min-height:58px!important;padding:5px 8px!important;
+  gap:3px!important;z-index:1000!important;
+ }
+ .mobilebar>button, :root[data-theme="dark"] .mobilebar>button{
+  flex:1 1 0!important;width:0!important;min-width:0!important;
+  min-height:46px!important;padding:4px 2px!important;
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  gap:2px!important;font-size:10px!important;line-height:1.1!important;
+ }
+ .mobilebar>button span:first-child{font-size:18px!important}
+ .main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}
+ .more-overlay{display:flex!important}
+}
