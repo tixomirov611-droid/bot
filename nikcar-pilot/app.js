@@ -1200,8 +1200,54 @@ function accountPage(){nikcarRememberTestAccount();return `<div class="cards acc
 let passportOcrBusy=false;
 const passportOcrQueue=[];
 const pendingPassportPhotos={front:null,back:null};
+// Private, device-local temporary photo staging. IndexedDB keeps File blobs intact
+// across PWA restarts; records expire after 24h and are scoped to the signed-in user.
+const NIKCAR_PHOTO_DRAFT_TTL=86400000;
+function nikcarPhotoDraftDb(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window)){reject(Error('IndexedDB unavailable'));return;}
+  const req=indexedDB.open('nikcar-private-drafts',1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('photos'))req.result.createObjectStore('photos');};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ });
+}
+async function nikcarPhotoDraftOperation(key,value,remove=false){
+ const db=await nikcarPhotoDraftDb();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('photos','readwrite'),store=tx.objectStore('photos');
+  const req=remove?store.delete(key):store.put(value,key);
+  req.onerror=()=>reject(req.error);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+async function nikcarRememberPassportPhoto(side,file){
+ if(!user?.id||!isOwner()||!['front','back'].includes(side)||!file||file.size>5242880)return;
+ try{await nikcarPhotoDraftOperation(user.id+':passport:'+side,{file,at:Date.now()});}
+ catch(err){console.warn('Private photo draft unavailable',err);}
+}
+async function nikcarRestorePassportPhotos(){
+ if(!user?.id||!isOwner()||!document.getElementById('new-car'))return;
+ const account=user.id,db=await nikcarPhotoDraftDb().catch(()=>null);
+ if(!db)return;
+ try{
+  for(const side of ['front','back']){
+   const record=await new Promise(resolve=>{
+    const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get(account+':passport:'+side);
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null);
+   });
+   if(user?.id!==account)return;
+   if(record?.file&&Date.now()-record.at<NIKCAR_PHOTO_DRAFT_TTL&&record.file.size<=5242880){
+    if(!pendingPassportPhotos[side])pendingPassportPhotos[side]=record.file;
+   }else if(record)void nikcarPhotoDraftOperation(account+':passport:'+side,null,true).catch(()=>{});
+  }
+  updatePassportAttachments();
+ }finally{db.close();}
+}
+function nikcarForgetPassportPhotos(account){
+ if(!account)return;
+ for(const side of ['front','back'])void nikcarPhotoDraftOperation(account+':passport:'+side,null,true).catch(()=>{});
+}
 function updatePassportAttachments(){const el=document.getElementById('tech-passport-attachments');if(el)el.textContent='Лицьова: '+(pendingPassportPhotos.front?.name||'не вибрана')+' · Зворотна: '+(pendingPassportPhotos.back?.name||'не вибрана')+'. Фото зберігаються після створення авто.';}
-function clearPendingPassportPhotos(){pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;passportOcrQueue.length=0;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
+function clearPendingPassportPhotos(){nikcarForgetPassportPhotos(user?.id);pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;passportOcrQueue.length=0;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
@@ -1501,7 +1547,7 @@ function nikcarEnhanceSections(){
   card.parentNode.insertBefore(wrapper,card);wrapper.append(summary,card);
  }
 }
-function render(){if(nikcarDemoDriver&&user&&isOwner()){root.innerHTML=nikcarDemoDriverPage();return;}captureOwnerUiDraft();captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Beta</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={accountant:'💼 Бухгалтерія',dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),'nikcar-ai':'NikCar AI',sos:t('sosTitle'),account:t('account'),tracking:'GPS / Техніка',payments:t('paymentTitle'),notifications:'🔔 Smart Notifications',points:'Point Balance',api:'API та інтеграції','days-off':'📅 Безоплатні вихідні','rent-debts':'📊 Борги за оренду','car-upgrades':'✨ Покращення авто та борги',settings:'⚙ Налаштування',repairs:t('repairTitle'),sto:'🔧 СТО · Заявки'};const b={accountant:accountantPage,'car-upgrades':nikcarCarUpgradesPage,'rent-debts':rentDebtsPage,points:pointsPage,'days-off':daysOffPage,settings:settingsPage,api:apiPage,notifications:notificationsPage,payments:paymentsPage,repairs:repairsPage,sto:nikcarStoPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,'nikcar-ai':nikcarAiPage,tracking:trackingPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);nikcarEnhanceSections();if(page==='accountant'){void nikcarLoadAccountantSummary();void nikcarLoadAccountantDebtors();void nikcarLoadDebtCallHistory();}if(page==='rent-debts'&&isOwner())void nikcarLoadRentReconciliation();if(page==='payments')void nikcarLoadPaymentReceipts();if(page==='payments'&&isOwner())void nikcarLoadPaymentAudit();if(page==='car-upgrades')void nikcarLoadCarUpgrades();if(page==='cars')void nikcarUpdateHistoricalPreview();if(page==='payments'||page==='rent-debts'||(page==='dashboard'&&isOwner()))void nikcarRentRefresh();if(page==='dashboard'&&isOwner())void nikcarLifetimeIncomeRefresh();if(page==='account'){const btn=document.getElementById('nikcar-push-enable');if(btn)btn.onclick=async()=>{btn.disabled=true;try{await nikcarEnablePush()}catch(err){toast(err.message||'Не вдалося увімкнути сповіщення')}finally{btn.disabled=false}};}if(page==='points'&&!pointLoaded)loadPoints();if(page==='nikcar-ai'&&!aiMemoryLoaded)void refreshAiMemory(true);void hydratePrivatePhotos();restoreNewCarDraft();restoreOwnerUiDraft();updatePassportAttachments();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
+function render(){if(nikcarDemoDriver&&user&&isOwner()){root.innerHTML=nikcarDemoDriverPage();return;}captureOwnerUiDraft();captureNewCarDraft();document.documentElement.lang=lang;if(!configured){root.innerHTML=configuredPage();return;}if(!sb){root.innerHTML='<div class="loading">NikCar · Beta</div>';return;}if(!user||recoveryMode){root.innerHTML=authPage();return;}if(!me){root.innerHTML=`<div class="auth-layout"><div class="auth-box"><h1>${t('notFound')}</h1><button class="btn" data-action="refresh">${t('reload')}</button><button class="btn secondary" data-action="signout">${t('signout')}</button></div></div>`;return;}const titles={accountant:'💼 Бухгалтерія',dashboard:t('dashboardTitle'),drivers:t('driversTitle'),announcements:t('announcements'),cars:t('cars'),requests:t('requestTitle'),documents:isOwner()?t('docOwnerView'):t('docsTitle'),chat:t('chatTitle'),'nikcar-ai':'NikCar AI',sos:t('sosTitle'),account:t('account'),tracking:'GPS / Техніка',payments:t('paymentTitle'),notifications:'🔔 Smart Notifications',points:'Point Balance',api:'API та інтеграції','days-off':'📅 Безоплатні вихідні','rent-debts':'📊 Борги за оренду','car-upgrades':'✨ Покращення авто та борги',settings:'⚙ Налаштування',repairs:t('repairTitle'),sto:'🔧 СТО · Заявки'};const b={accountant:accountantPage,'car-upgrades':nikcarCarUpgradesPage,'rent-debts':rentDebtsPage,points:pointsPage,'days-off':daysOffPage,settings:settingsPage,api:apiPage,notifications:notificationsPage,payments:paymentsPage,repairs:repairsPage,sto:nikcarStoPage,dashboard:dashboardPage,drivers:driversPage,announcements:announcementsPage,cars:carsPage,requests:requestsPage,documents:documentsPage,chat:chatPage,'nikcar-ai':nikcarAiPage,tracking:trackingPage,sos:sosPage,account:accountPage};root.innerHTML=layout(b[page](),titles[page]);nikcarEnhanceSections();if(page==='accountant'){void nikcarLoadAccountantSummary();void nikcarLoadAccountantDebtors();void nikcarLoadDebtCallHistory();}if(page==='rent-debts'&&isOwner())void nikcarLoadRentReconciliation();if(page==='payments')void nikcarLoadPaymentReceipts();if(page==='payments'&&isOwner())void nikcarLoadPaymentAudit();if(page==='car-upgrades')void nikcarLoadCarUpgrades();if(page==='cars')void nikcarUpdateHistoricalPreview();if(page==='payments'||page==='rent-debts'||(page==='dashboard'&&isOwner()))void nikcarRentRefresh();if(page==='dashboard'&&isOwner())void nikcarLifetimeIncomeRefresh();if(page==='account'){const btn=document.getElementById('nikcar-push-enable');if(btn)btn.onclick=async()=>{btn.disabled=true;try{await nikcarEnablePush()}catch(err){toast(err.message||'Не вдалося увімкнути сповіщення')}finally{btn.disabled=false}};}if(page==='points'&&!pointLoaded)loadPoints();if(page==='nikcar-ai'&&!aiMemoryLoaded)void refreshAiMemory(true);void hydratePrivatePhotos();restoreNewCarDraft();restoreOwnerUiDraft();updatePassportAttachments();void nikcarRestorePassportPhotos();if(page==='chat'){const el=document.getElementById('messages');if(el)el.scrollTop=el.scrollHeight;}}
 let lastRecordsUserId=null;
 let partialLoadWarningShown=false;
 async function load({preserveDraft=false}={}){
@@ -1785,7 +1831,7 @@ document.addEventListener('change',async evt=>{
  }
  finally{docBusy=false;f.disabled=false;}
 });
-document.addEventListener('change',evt=>{const side=evt.target.id==='tech-passport-photo'?'front':evt.target.id==='tech-passport-back-photo'?'back':null;if(!side)return;const file=evt.target.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){toast('Фото техпаспорта: JPG/PNG/WebP до 5 МБ');evt.target.value='';return;}pendingPassportPhotos[side]=file;updatePassportAttachments();void readTechPassport(file);});
+document.addEventListener('change',evt=>{const side=evt.target.id==='tech-passport-photo'?'front':evt.target.id==='tech-passport-back-photo'?'back':null;if(!side)return;const file=evt.target.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){toast('Фото техпаспорта: JPG/PNG/WebP до 5 МБ');evt.target.value='';return;}pendingPassportPhotos[side]=file;void nikcarRememberPassportPhoto(side,file);updatePassportAttachments();void readTechPassport(file);});
 function filterFleetRows(){
  const apply=(selector,searchId,carId,kindId,emptyId,kindAttr)=>{
   const search=(document.getElementById(searchId)?.value||'').toLocaleLowerCase().trim();
