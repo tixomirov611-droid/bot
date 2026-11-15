@@ -1969,6 +1969,12 @@ if(formId==='fuel-price-form'){
   const {data:updated,error}=await sb.from('cars').update(changes).eq('id',carId).select('id,plate,model,weekly_rate,vin,registration_certificate').single();
   if(error)throw error;
   if(!updated||updated.id!==carId)throw Error('Збереження не підтверджено сервером');
+  // Verify the persisted row, not merely the mutation response. Keep the edit form open on mismatch.
+  const {data:verified,error:verifyError}=await sb.from('cars').select('id,plate,model,year,weekly_rate,daily_rate,vin,registration_certificate,photo_path,registration_photo_path,registration_photo_back_path').eq('id',carId).single();
+  if(verifyError)throw Error('Зміни надіслано, але повторна перевірка не вдалася: '+verifyError.message);
+  const same=(a,b)=>String(a??'')===String(b??'');
+  const mismatched=Object.keys(changes).filter(key=>key==='weekly_rate'||key==='daily_rate'?Math.abs(Number(verified[key])-Number(changes[key]))>0.011:!same(verified[key],changes[key]));
+  if(mismatched.length)throw Error('Сервер не підтвердив збереження полів: '+mismatched.join(', ')+'. Перевірте дані перед повторною спробою.');
   carEditor=null;
   pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;
   forceMutationRefresh++;
