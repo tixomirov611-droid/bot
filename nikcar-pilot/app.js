@@ -415,7 +415,7 @@ function isFleetDriverProfile(p){return p?.role==='driver'&&!staffAssignments.so
 function isServiceStaffProfile(p){return p?.role==='driver'&&staffAssignments.some(a=>a.profile_id===p.id&&['administrator','accountant','mechanic'].includes(a.staff_role));}
 function accountantPage(){
  if(!isOwner()&&!isAccountant())return '<div class="banner warning">Доступ лише бухгалтеру або власнику</div>';
- return '<div class="card"><h2>💼 Фінансовий огляд</h2><p class="small">Підтверджені надходження та борги автопарку. Режим перегляду: бухгалтер не може змінювати платежі, штрафи чи тарифи.</p><div id="nikcar-accountant-summary">Завантаження фінансових показників…</div><h3 style="margin-top:22px">📞 Обдзвін боржників</h3><p class="small">Контакти водіїв із непогашеною заборгованістю. Список упорядкований за сумою боргу.</p><div id="nikcar-accountant-debtors">Завантаження контактів…</div><h3>🗒️ Журнал дзвінків</h3><div id="nikcar-debt-call-history">Завантаження історії…</div><button class="btn secondary tiny" type="button" data-action="refresh-accountant">↻ Оновити</button></div>';
+ return '<div class="card"><h2>💼 Фінансовий огляд</h2><p class="small">Підтверджені надходження та борги автопарку. Режим перегляду: бухгалтер не може змінювати платежі, штрафи чи тарифи.</p><div id="nikcar-accountant-summary">Завантаження фінансових показників…</div><h3 style="margin-top:22px">📞 Обдзвін боржників</h3><p class="small">Контакти водіїв із непогашеною заборгованістю. Список упорядкований за сумою боргу.</p><div id="nikcar-accountant-debtors">Завантаження контактів…</div><h3>📅 Контроль обіцянок і повторних дзвінків</h3><div id="nikcar-debt-followups">Завантаження нагадувань…</div><h3>🗒️ Журнал дзвінків</h3><div id="nikcar-debt-call-history">Завантаження історії…</div><button class="btn secondary tiny" type="button" data-action="refresh-accountant">↻ Оновити</button></div>';
 }
 async function nikcarLoadAccountantSummary(){
  const target=document.getElementById('nikcar-accountant-summary');
@@ -450,12 +450,22 @@ async function nikcarLoadAccountantDebtors(){
  }catch(err){if(target.isConnected)target.textContent='Не вдалося завантажити боржників: '+(err.message||String(err));}
 }
 async function nikcarLoadDebtCallHistory(){
- const target=document.getElementById('nikcar-debt-call-history');if(!target||!sb||(!isOwner()&&!isAccountant()))return;
- const {data,error}=await sb.from('nikcar_debt_calls').select('id,driver_id,staff_profile_id,outcome,note,promised_amount,follow_up_at,created_at').order('created_at',{ascending:false}).limit(60);
+ const target=document.getElementById('nikcar-debt-call-history'),followTarget=document.getElementById('nikcar-debt-followups');
+ if(!target||!sb||(!isOwner()&&!isAccountant()))return;
+ const {data,error}=await sb.from('nikcar_debt_calls').select('id,driver_id,staff_profile_id,outcome,note,promised_amount,follow_up_at,created_at').order('created_at',{ascending:false}).limit(500);
  if(!target.isConnected)return;
- if(error){target.textContent='Історія недоступна: '+error.message;return;}
- const labels={no_answer:'Не відповів',promised:'Обіцяв оплатити',contacted:'Поговорили',disputed:'Оскаржує борг',other:'Інше'};
- target.innerHTML=(data||[]).length?(data||[]).map(x=>'<div class="card" style="margin:8px 0"><b>'+e(name(x.driver_id))+'</b> · '+e(labels[x.outcome]||x.outcome)+'<div class="small">'+e(d(x.created_at))+' · Співробітник: '+e(name(x.staff_profile_id))+'</div>'+(x.note?'<p>'+e(x.note)+'</p>':'')+(x.promised_amount?'<div class="small">Обіцяно: '+money(Number(x.promised_amount))+'</div>':'')+(x.follow_up_at?'<div class="small">📅 Повторний контакт: '+e(d(x.follow_up_at))+'</div>':'')+'</div>').join(''):'<p class="small">Записів дзвінків ще немає.</p>';
+ if(error){target.textContent='Історія недоступна: '+error.message;if(followTarget)followTarget.textContent='Нагадування недоступні';return;}
+ const calls=data||[],labels={no_answer:'Не відповів',promised:'Обіцяв оплатити',contacted:'Поговорили',disputed:'Оскаржує борг',other:'Інше'};
+ const latest=new Map();for(const call of calls)if(!latest.has(call.driver_id))latest.set(call.driver_id,call);
+ const now=Date.now(),due=[...latest.values()].filter(x=>x.follow_up_at&&new Date(x.follow_up_at).getTime()<=now).sort((a,b)=>String(a.follow_up_at).localeCompare(String(b.follow_up_at)));
+ const upcoming=[...latest.values()].filter(x=>x.follow_up_at&&new Date(x.follow_up_at).getTime()>now).sort((a,b)=>String(a.follow_up_at).localeCompare(String(b.follow_up_at)));
+ const promises=[...latest.values()].filter(x=>x.outcome==='promised'&&Number(x.promised_amount)>0);
+ if(followTarget&&followTarget.isConnected){
+  followTarget.innerHTML='<div class="metric-grid"><div class="stat"><span>Потрібно зателефонувати</span><strong>'+due.length+'</strong></div><div class="stat"><span>Заплановано</span><strong>'+upcoming.length+'</strong></div><div class="stat"><span>Активні обіцянки</span><strong>'+promises.length+'</strong></div><div class="stat"><span>Обіцяно, грн</span><strong>'+money(promises.reduce((sum,x)=>sum+Number(x.promised_amount||0),0))+'</strong></div></div><p class="small">Нагадування відображаються у кабінеті. Для кожного водія враховується останній запис. Обіцяні суми не вважаються оплатою.</p>'+
+  (due.length?'<h4>🔴 Прострочені контакти</h4>'+due.map(x=>'<div class="line"><b>'+e(name(x.driver_id))+'</b><span class="small">📅 '+e(d(x.follow_up_at))+' · '+e(labels[x.outcome]||x.outcome)+(x.promised_amount?' · '+money(Number(x.promised_amount)):'')+'</span></div>').join(''):'<p class="small">Прострочених повторних дзвінків немає.</p>')+
+  (upcoming.length?'<h4>🗓️ Наступні дзвінки</h4>'+upcoming.slice(0,15).map(x=>'<div class="line"><b>'+e(name(x.driver_id))+'</b><span class="small">'+e(d(x.follow_up_at))+'</span></div>').join(''):'');
+ }
+ target.innerHTML=calls.length?calls.slice(0,60).map(x=>'<div class="card" style="margin:8px 0"><b>'+e(name(x.driver_id))+'</b> · '+e(labels[x.outcome]||x.outcome)+'<div class="small">'+e(d(x.created_at))+' · Співробітник: '+e(name(x.staff_profile_id))+'</div>'+(x.note?'<p>'+e(x.note)+'</p>':'')+(x.promised_amount?'<div class="small">Обіцяно: '+money(Number(x.promised_amount))+'</div>':'')+(x.follow_up_at?'<div class="small">📅 Повторний контакт: '+e(d(x.follow_up_at))+'</div>':'')+'</div>').join(''):'<p class="small">Записів дзвінків ще немає.</p>';
 }
 function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('notApproved')}</div>`;
  const total=records.cars.length, drivers=records.profiles.filter(isFleetDriverProfile);
