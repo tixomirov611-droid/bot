@@ -1338,15 +1338,16 @@ async function readTechPassport(file){
 let newCarDraft=null;
 function saveNewCarDraft(){
  if(!user||!isOwner()||!newCarDraft||newCarDraft.userId!==user.id)return;
- try{sessionStorage.setItem('nikcar-car-draft:'+user.id,JSON.stringify(newCarDraft.values));}catch(_){}
+ try{sessionStorage.setItem('nikcar-car-draft:'+user.id,JSON.stringify({at:Date.now(),values:newCarDraft.values}));}catch(_){}
 }
 function readNewCarDraft(){
  if(!user||!isOwner()||newCarDraft?.userId===user.id)return;
  try{
-  const values=JSON.parse(sessionStorage.getItem('nikcar-car-draft:'+user.id)||'null');
-  if(values&&typeof values==='object'&&!Array.isArray(values)){
+  const stored=JSON.parse(sessionStorage.getItem('nikcar-car-draft:'+user.id)||'null');
+  const values=stored?.values;
+  if(stored&&Number.isFinite(stored.at)&&Date.now()-stored.at<86400000&&values&&typeof values==='object'&&!Array.isArray(values)){
    newCarDraft={userId:user.id,values:Object.fromEntries(['model','plate','vin','year','rate','registration_certificate'].map(k=>[k,typeof values[k]==='string'?values[k]:'']))};
-  }
+  }else sessionStorage.removeItem('nikcar-car-draft:'+user.id);
  }catch(_){}
 }
 document.addEventListener('input',ev=>{if(ev.target?.name==='year'&&ev.target?.form?.id&&['new-car','edit-car-form'].includes(ev.target.form.id))ev.target.setCustomValidity('');});
@@ -1446,6 +1447,9 @@ function restoreOwnerUiDraft(){
   if(value&&[...el.options].some(opt=>opt.value===value))el.value=value;
  });
 }
+// Capture editable drafts when iOS suspends the PWA or the browser navigates away.
+window.addEventListener('pagehide',()=>{captureOwnerUiDraft();captureNewCarDraft();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){captureOwnerUiDraft();captureNewCarDraft();}});
 function nikcarEnhanceSections(){
  const eligible=['cars','drivers','requests','payments','tracking','repairs','sto','points','car-upgrades','days-off','api','notifications','sos','announcements'];
  if(!eligible.includes(page))return;
