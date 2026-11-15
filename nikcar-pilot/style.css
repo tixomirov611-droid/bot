@@ -1151,3 +1151,37 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .mobilebar .nikcar-all-menu span{color:inherit!important}
 }
 :root[data-theme="dark"] .nikcar-top-menu{background:#292e23;color:#e7ff85;border-color:#434b33}
+
+/* NikCar 1.25.11 — consistent bottom navigation on iOS and Android */
+@media (max-width:680px){
+ .mobilebar, :root[data-theme="dark"] .mobilebar{
+  position:fixed!important;left:50%!important;right:auto!important;
+  bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;
+  transform:translateX(-50%)!important;
+  width:calc(100% - 20px)!important;max-width:540px!important;
+  display:flex!important;flex-wrap:nowrap!important;
+  align-items:stretch!important;justify-content:space-between!important;
+  gap:2px!important;padding:6px!important;
+  box-sizing:border-box!important;
+  border-radius:22px!important;
+ }
+ .mobilebar>button, :root[data-theme="dark"] .mobilebar>button{
+  flex:1 1 0!important;width:0!important;min-width:0!important;
+  max-width:none!important;min-height:54px!important;
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  gap:3px!important;padding:6px 1px!important;
+  font-size:clamp(8px,2.35vw,10px)!important;
+  line-height:1.15!important;text-align:center!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;
+  border-radius:15px!important;
+ }
+ .mobilebar>button span:first-child{font-size:20px!important;line-height:1!important}
+ .main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+ .more-overlay{padding-bottom:0!important}
+ .more-sheet{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))!important}
+}
+@media(max-width:360px){
+ .mobilebar, :root[data-theme="dark"] .mobilebar{width:calc(100% - 12px)!important;padding:5px 3px!important}
+ .mobilebar>button, :root[data-theme="dark"] .mobilebar>button{font-size:8px!important;padding:5px 0!important}
+}
