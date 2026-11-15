@@ -1073,3 +1073,43 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .nikcar-accountant-layout .row.stack>.btn{width:100%;align-self:stretch;min-height:45px}
 }
 @media(max-width:370px){.nikcar-accountant-layout .metric-grid{grid-template-columns:1fr}}
+
+
+/* NikCar 1.25.6 — owner dashboard mockup alignment */
+.nikcar-dashboard-heading{margin:2px 0 12px}
+.nikcar-dashboard-heading h2{font-size:clamp(26px,4vw,36px);letter-spacing:-1px;margin:0}
+.nikcar-dashboard-subheading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:24px 2px 13px}
+.nikcar-dashboard-subheading h2{font-size:clamp(22px,3.3vw,29px);letter-spacing:-.7px;margin:0}
+.nikcar-fleet-metrics{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.nikcar-fleet-metrics .metric{min-width:0;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;text-align:left;padding:17px 15px;border-radius:23px}
+.nikcar-fleet-metrics .metric-icon{grid-row:1/3;display:flex;align-items:center;justify-content:center}
+.nikcar-fleet-metrics .metric-value{font-size:clamp(25px,3.6vw,38px);font-weight:900;letter-spacing:-1px;line-height:1.1}
+.nikcar-fleet-metrics .small{font-size:12px;line-height:1.2}
+.nikcar-dashboard-finance{min-width:0}
+.nikcar-dashboard-finance .card{border-radius:24px}
+.nikcar-dashboard-more{margin:18px 0;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.nikcar-dashboard-more>summary{list-style:none;cursor:pointer;padding:17px 19px;font-weight:750;display:flex;justify-content:space-between;align-items:center}
+.nikcar-dashboard-more>summary::-webkit-details-marker{display:none}
+.nikcar-dashboard-more>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.nikcar-dashboard-more[open]>summary span{transform:rotate(180deg)}
+.nikcar-dashboard-more-inner{padding:0 14px 14px}
+:root[data-theme="dark"] .nikcar-fleet-metrics .metric{background:linear-gradient(140deg,#282b28,#1b1e1b);border:1px solid #353b33;color:#f7f9f4}
+:root[data-theme="dark"] .nikcar-fleet-metrics .metric-icon{color:#dfff36}
+:root[data-theme="dark"] .nikcar-dashboard-more{background:#171a16;border-color:#343a30}
+:root[data-theme="dark"] .nikcar-dashboard-heading .nikcar-section-eyebrow{color:#dfff36}
+:root[data-theme="dark"] .nikcar-income-hero{margin:0 0 6px!important;position:relative;overflow:hidden}
+:root[data-theme="dark"] .nikcar-income-hero:after{content:"";position:absolute;right:-45px;top:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(68,93,9,.19),transparent 70%);pointer-events:none}
+@media(max-width:850px){.nikcar-fleet-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){
+ .dashboard-hero{display:none!important}
+ .nikcar-dashboard-heading{margin:5px 0 15px}
+ .nikcar-dashboard-heading h2{font-size:29px}
+ .nikcar-fleet-metrics{gap:10px}
+ .nikcar-fleet-metrics .metric{padding:15px 12px;border-radius:21px;column-gap:9px;min-height:92px}
+ .nikcar-fleet-metrics .metric-icon svg{width:27px;height:27px}
+ .nikcar-fleet-metrics .metric-value{font-size:29px}
+ .nikcar-fleet-metrics .small{font-size:11px}
+ .nikcar-dashboard-subheading{margin-top:23px}
+ .nikcar-dashboard-more-inner{padding:0 10px 10px}
+}
+@media(max-width:360px){.nikcar-fleet-metrics .metric{grid-template-columns:1fr;row-gap:3px}.nikcar-fleet-metrics .metric-icon{grid-row:auto;justify-content:flex-start}}
