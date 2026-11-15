@@ -479,6 +479,15 @@ function vehicleCheckPanel(car){
 }
 let nikcarHistoricalPreviewSerial=0;
 let nikcarHistoricalPreviewTimer=null;
+document.addEventListener('change',evt=>{
+ const form=evt.target?.closest?.('#cash-payment-form');if(!form)return;
+ const purpose=form.elements.purpose?.value,choice=document.getElementById('fine-payment-choice');
+ if(choice)choice.style.display=purpose==='fine'?'block':'none';
+ if(purpose==='fine'){
+  const fine=(records.fleet_fines||[]).find(x=>x.id===form.elements.fine_id?.value&&x.driver_id===me?.id&&x.status==='assigned');
+  if(fine){form.elements.amount.value=Number(fine.amount).toFixed(2);const rental=records.rental_requests.find(x=>x.id===fine.rental_request_id&&x.driver_id===me?.id&&x.status==='approved');if(rental)form.elements.rental.value=rental.id;}
+ }
+});
 document.addEventListener('change',evt=>{if(evt.target?.closest?.('#import-existing-rental')&&['car','start_date','historical_paid'].includes(evt.target.name))void nikcarUpdateHistoricalPreview();});
 document.addEventListener('input',evt=>{if(evt.target?.closest?.('#import-existing-rental')&&evt.target.name==='historical_paid'){clearTimeout(nikcarHistoricalPreviewTimer);nikcarHistoricalPreviewTimer=setTimeout(()=>void nikcarUpdateHistoricalPreview(),350);}});
 
@@ -1343,7 +1352,7 @@ if(a==='enable-push'){try{await nikcarEnablePush();}catch(err){toast(err.message
   if(!fine)return;
   page='payments';render();window.scrollTo(0,0);
   const form=document.getElementById('cash-payment-form');
-  if(form){form.elements.purpose.value='fine';form.elements.fine_id.value=id;form.elements.amount.value=Number(fine.amount).toFixed(2);form.elements.purpose.dispatchEvent(new Event('change',{bubbles:true}));form.scrollIntoView({block:'start',behavior:'smooth'});}
+  if(form){form.elements.purpose.value='fine';form.elements.fine_id.value=id;form.elements.purpose.dispatchEvent(new Event('change',{bubbles:true}));form.elements.amount.value=Number(fine.amount).toFixed(2);form.scrollIntoView({block:'start',behavior:'smooth'});}
   return;
  }
  if(a==='send-fine-push'){
