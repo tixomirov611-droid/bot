@@ -933,3 +933,8 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 .nik-doc-content{padding:4px 20px 18px;border-top:1px solid var(--line,rgba(180,180,180,.2))}
 .nik-doc-summary:focus-visible{outline:2px solid #d5ff24;outline-offset:-4px}
 @media(max-width:600px){.nik-doc-summary{padding:16px}.nik-doc-content{padding:4px 16px 16px}.nik-doc-summary-info strong{font-size:18px}}
+
+/* Dashboard summary cards are accessible navigation buttons */
+.metric-link{display:block;width:100%;font:inherit;color:var(--ink);text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none;transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.metric-link:hover,.metric-link:focus-visible{border-color:var(--accent-dark);box-shadow:0 0 0 2px var(--accent-dark);outline:none}
+.metric-link:active{transform:scale(.985)}
