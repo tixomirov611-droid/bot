@@ -1757,10 +1757,9 @@ if(formId==='fuel-price-form'){
   const {error:uploadError}=await sb.storage.from('nikcar-payment-receipts').upload(receiptPath,file,{contentType:file.type,upsert:false});
   if(uploadError)throw uploadError;
  }
- const {error:paymentError}=await sb.from('payment_claims').insert({id:paymentId,driver_id:me.id,rental_request_id:rentalId,method:selectedMethod==='monobank_transfer'?'card_transfer':selectedMethod,amount,driver_note:note.trim()});
- if(paymentError)throw paymentError;
- if(receiptPath){const {error:receiptError}=await sb.from('nikcar_payment_receipts').insert({payment_id:paymentId,driver_id:me.id,storage_path:receiptPath});if(receiptError)throw Error('Заявку створено, але скріншот не прикріпився: '+receiptError.message);}
- toast('Заявку та підтвердження оплати надіслано на перевірку');await load();return;}
+ const {error:paymentError}=await sb.rpc('nikcar_submit_payment_with_receipt',{p_id:paymentId,p_rental:rentalId,p_amount:amount,p_method:selectedMethod==='cash'?'cash':'card_transfer',p_note:note.trim(),p_receipt_path:receiptPath});
+ if(paymentError){if(receiptPath){try{await sb.storage.from('nikcar-payment-receipts').remove([receiptPath]);}catch(cleanupError){console.warn('Receipt cleanup deferred',cleanupError);}}throw paymentError;}
+ toast('Заявку надіслано на перевірку'+(receiptPath?' разом зі скріншотом':''));forceMutationRefresh++;await load();return;}
  if(formId==='tracking-asset-form'){if(!isOwner())return;const title=String(f.get('title')||'').trim();if(title.length<2)throw Error('Вкажіть назву техніки');const {error}=await sb.from('fleet_tracking_assets').insert({title,category:String(f.get('category')||'other'),car_id:String(f.get('car_id')||'')||null,provider:String(f.get('provider')||'').trim()||null,device_identifier:String(f.get('device_identifier')||'').trim()||null,sim_phone:String(f.get('sim_phone')||'').trim()||null,note:String(f.get('note')||'').trim()||null});if(error)throw error;form.reset();forceMutationRefresh++;await load();toast('Техніку додано до реєстру');return;}
  if(formId==='nikcar-ai-memory-form'){if(!isOwner())return;const note=String(f.get('note')||'').trim();if(note.length<3||note.length>1000)throw Error('Правило: 3–1000 символів');const {error}=await sb.from('nikcar_ai_memory').insert({note,created_by:user.id});if(error)throw error;await refreshAiMemory(true);toast('Збережено');return;}if(formId==='nikcar-ai-question'){if(!isOwner())return;aiQuestion=String(f.get('question')||'').trim();aiAnswer=nikcarAiRespond(aiQuestion);render();return;}
  if(formId==='fleet-damage-ai-form'){
