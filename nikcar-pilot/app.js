@@ -1889,7 +1889,7 @@ if(formId==='fuel-price-form'){
   if(error)throw error;
   if(!updated||updated.id!==carId)throw Error('Збереження не підтверджено сервером');
   carEditor=null;
-  pendingPassportPhotos={front:null,back:null};
+  pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;
   forceMutationRefresh++;
   await load();
   toast('Дані авто збережено та оновлено з бази.');
