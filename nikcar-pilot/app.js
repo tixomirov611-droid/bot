@@ -1494,7 +1494,8 @@ if(a==='test-switch-account'){await nikcarSwitchTestAccount(id);return;}if(a==='
   const {error}=await sb.rpc('nikcar_confirm_point_payment',{p_payment:id,p_bank_reference:bankRef.trim()});
   if(error)throw error;toast('Платіж підтверджено, Points зараховано');await loadPoints();await load();return;
  }
- const {error}=await sb.rpc('nikcar_decide_payment',{p_id:id,p_confirm:a==='confirm-payment',p_note:''});if(error)throw error;toast(t(a==='confirm-payment'?'confirmed':'rejected'));await load();return;}
+ let verifiedRef='';if(a==='confirm-payment'&&pay.method==='card_transfer'){const input=window.prompt('Звірте надходження в банку та введіть унікальний номер банківської операції. Один номер можна зарахувати лише один раз:');if(input===null)return;verifiedRef=input.trim();if(verifiedRef.length<5){toast('Вкажіть номер банківської операції (мінімум 5 символів)');return;}}
+ const {error}=await sb.rpc('nikcar_decide_verified_bank_payment',{p_payment:id,p_confirm:a==='confirm-payment',p_bank_reference:verifiedRef});if(error)throw error;toast(t(a==='confirm-payment'?'confirmed':'rejected'));await load();return;}
  if(a==='post-repair'){if(!isOwner())return;const item=records.repair_jobs.find(x=>x.id===id);if(!item||item.status!=='draft')return;if(!window.confirm(`${t('repairPost')} · ${money(repairTotal(item))}?`))return;const {error,data}=await sb.rpc('nikcar_post_repair',{p_repair:id});if(error)throw error;toast(`${t('repairTotal')}: ${money(data)}`);await load();return;}
  if(a==='remove-part'){if(!isOwner())return;const item=records.repair_parts.find(x=>x.id===id);if(!item||records.repair_jobs.find(x=>x.id===item.repair_id)?.status!=='draft')return;await mutation(sb.from('repair_parts').delete().eq('id',id));return;} 
  if(a==='delete-car'){
