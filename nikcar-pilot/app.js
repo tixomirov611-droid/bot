@@ -1203,6 +1203,7 @@ const pendingPassportPhotos={front:null,back:null};
 // Private, device-local temporary photo staging. IndexedDB keeps File blobs intact
 // across PWA restarts; records expire after 24h and are scoped to the signed-in user.
 const NIKCAR_PHOTO_DRAFT_TTL=86400000;
+let nikcarLastPassportDraftOwner=null;
 function nikcarPhotoDraftDb(){
  return new Promise((resolve,reject)=>{
   if(!('indexedDB' in window)){reject(Error('IndexedDB unavailable'));return;}
@@ -1221,12 +1222,16 @@ async function nikcarPhotoDraftOperation(key,value,remove=false){
 }
 async function nikcarRememberPassportPhoto(side,file){
  if(!user?.id||!isOwner()||!['front','back'].includes(side)||!file||file.size>5242880)return;
- try{await nikcarPhotoDraftOperation(user.id+':passport:'+side,{file,at:Date.now()});}
+ const account=user.id;nikcarLastPassportDraftOwner=account;
+ try{await nikcarPhotoDraftOperation(account+':passport:'+side,{file,at:Date.now()});
+  if(user?.id!==account)nikcarForgetPassportPhotos(account);
+ }
  catch(err){console.warn('Private photo draft unavailable',err);}
 }
 async function nikcarRestorePassportPhotos(){
  if(!user?.id||!isOwner()||!document.getElementById('new-car'))return;
- const account=user.id,db=await nikcarPhotoDraftDb().catch(()=>null);
+ const account=user.id;nikcarLastPassportDraftOwner=account;
+ const db=await nikcarPhotoDraftDb().catch(()=>null);
  if(!db)return;
  try{
   for(const side of ['front','back']){
@@ -1247,7 +1252,7 @@ function nikcarForgetPassportPhotos(account){
  for(const side of ['front','back'])void nikcarPhotoDraftOperation(account+':passport:'+side,null,true).catch(()=>{});
 }
 function updatePassportAttachments(){const el=document.getElementById('tech-passport-attachments');if(el)el.textContent='Лицьова: '+(pendingPassportPhotos.front?.name||'не вибрана')+' · Зворотна: '+(pendingPassportPhotos.back?.name||'не вибрана')+'. Фото зберігаються після створення авто.';}
-function clearPendingPassportPhotos(){nikcarForgetPassportPhotos(user?.id);pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;passportOcrQueue.length=0;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
+function clearPendingPassportPhotos(){nikcarForgetPassportPhotos(nikcarLastPassportDraftOwner);if(user?.id!==nikcarLastPassportDraftOwner)nikcarForgetPassportPhotos(user?.id);nikcarLastPassportDraftOwner=null;pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;passportOcrQueue.length=0;for(const id of ['tech-passport-photo','tech-passport-back-photo']){const input=document.getElementById(id);if(input)input.value='';}updatePassportAttachments();}
 function parseTechPassport(text){
  const raw=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑–—]/g,'-');
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
