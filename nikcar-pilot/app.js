@@ -1602,12 +1602,16 @@ if(formId==='fuel-price-form'){
   const violation=String(f.get('violation_at')||''),baseAmount=Number(f.get('amount')),amount=Math.round(baseAmount*110)/100;
   const car_id=String(f.get('car_id')||''),notice_number=String(f.get('notice_number')||'').trim();
   if(!records.cars.some(c=>c.id===car_id)||!notice_number||!Number.isFinite(Date.parse(violation))||!(amount>0))throw Error('Перевірте дані постанови');
-  if((records.fleet_fines||[]).some(x=>x.notice_number===notice_number&&x.status!=='cancelled'))throw Error('Постанова з таким номером уже зареєстрована');
+  const normalizedNotice=notice_number.replace(/\s/g,'').toUpperCase();
+  if((records.fleet_fines||[]).some(x=>String(x.notice_number||'').replace(/\s/g,'').toUpperCase()===normalizedNotice))throw Error('Цю постанову вже зареєстровано. Повторне нарахування не створено.');
+  const {data:existingFine,error:lookupError}=await sb.from('fleet_fines').select('id,status').eq('source','manual').eq('notice_number',notice_number).limit(1);
+  if(lookupError)throw lookupError;
+  if(existingFine?.length)throw Error('Цю постанову вже зареєстровано (статус: '+(existingFine[0].status||'невідомий')+'). Повторне нарахування не створено.');
   const screenshot=f.get('fine_screenshot');let photoPath='';
   if(screenshot&&screenshot.size){photoPath='fines/'+user.id+'/'+Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+photoExt(screenshot);await uploadFleetPhotoWithRetry(screenshot,photoPath);}
   const fineNote='Штраф: '+baseAmount.toFixed(2)+' ₴; збір NikCar 10%: '+(amount-baseAmount).toFixed(2)+' ₴'+(photoPath?'; скріншот: '+photoPath:'')+(String(f.get('notes')||'').trim()?'; '+String(f.get('notes')||'').trim():'');
   const {data:createdFine,error}=await sb.from('fleet_fines').insert({car_id,notice_number,violation_at:new Date(violation).toISOString(),amount,notes:fineNote.slice(0,500),source:'manual'}).select('id,status,driver_id').single();
-  if(error)throw error;
+  if(error){if(error.code==='23505'||String(error.message||'').includes('fleet_fines_source_notice_number_key'))throw Error('Цю постанову вже зареєстровано. Штраф не дубльовано, повторний push не надсилається.');throw error;}
   form.reset();forceMutationRefresh++;await load();
   if(createdFine?.status==='assigned'&&createdFine?.driver_id){
    try{const {error:pushError}=await sb.functions.invoke('nikcar-chat-push',{body:{fine_id:createdFine.id}});if(pushError)console.warn('Fine push delivery pending',pushError);}
