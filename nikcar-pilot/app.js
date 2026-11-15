@@ -1883,7 +1883,20 @@ if(formId==='fuel-price-form'){
   if(uploadError&&!String(uploadError.message||'').toLowerCase().includes('already exists'))throw uploadError;
  }
  const {error:paymentError}=await sb.rpc('nikcar_submit_payment_with_receipt',{p_id:paymentId,p_rental:rentalId,p_amount:amount,p_method:selectedMethod==='cash'?'cash':'card_transfer',p_note:note.trim(),p_receipt_path:receiptPath});
- if(paymentError){throw paymentError;}form.dataset.paymentAttemptId='';
+ if(paymentError){
+  // A network failure can happen after the transaction commits. Resolve by
+  // immutable request ID instead of issuing a second financial operation.
+  const {data:existing,error:lookupError}=await sb.from('payment_claims')
+   .select('id,driver_id,rental_request_id,amount,method,driver_note')
+   .eq('id',paymentId).maybeSingle();
+  const expectedMethod=selectedMethod==='cash'?'cash':'card_transfer';
+  if(lookupError||!existing)throw paymentError;
+  if(existing.driver_id!==me.id||existing.rental_request_id!==rentalId||
+    Number(existing.amount)!==amount||existing.method!==expectedMethod||
+    existing.driver_note!==note.trim())throw Error('Платіж з таким номером уже існує з іншими реквізитами. Зверніться до власника.');
+  toast('Платіж уже зареєстровано. Повторне списання не виконано.');
+ }
+ form.dataset.paymentAttemptId='';
  toast('Заявку надіслано на перевірку'+(receiptPath?' разом зі скріншотом':''));forceMutationRefresh++;await load();return;}
  if(formId==='tracking-asset-form'){if(!isOwner())return;const title=String(f.get('title')||'').trim();if(title.length<2)throw Error('Вкажіть назву техніки');const {error}=await sb.from('fleet_tracking_assets').insert({title,category:String(f.get('category')||'other'),car_id:String(f.get('car_id')||'')||null,provider:String(f.get('provider')||'').trim()||null,device_identifier:String(f.get('device_identifier')||'').trim()||null,sim_phone:String(f.get('sim_phone')||'').trim()||null,note:String(f.get('note')||'').trim()||null});if(error)throw error;form.reset();forceMutationRefresh++;await load();toast('Техніку додано до реєстру');return;}
  if(formId==='nikcar-ai-memory-form'){if(!isOwner())return;const note=String(f.get('note')||'').trim();if(note.length<3||note.length>1000)throw Error('Правило: 3–1000 символів');const {error}=await sb.from('nikcar_ai_memory').insert({note,created_by:user.id});if(error)throw error;await refreshAiMemory(true);toast('Збережено');return;}if(formId==='nikcar-ai-question'){if(!isOwner())return;aiQuestion=String(f.get('question')||'').trim();aiAnswer=nikcarAiRespond(aiQuestion);render();return;}
