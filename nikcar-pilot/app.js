@@ -162,6 +162,30 @@ document.addEventListener('visibilitychange',refreshWhenVisible);
 const networkStatus=document.getElementById('network-status');
 function isOffline(){return typeof navigator!=='undefined'&&navigator.onLine===false;}
 function offlineMessage(){return lang==='uk'?'Немає інтернету. Дані не будуть надіслані, доки з’єднання не відновиться.':'No internet connection. Changes cannot be sent until connection returns.';}
+function nikcarNetworkError(err){
+ const code=String(err?.code||'').toUpperCase(),msg=String(err?.message||err||'');
+ return isOffline()||['PGRST000','PGRST001','PGRST002','PGRST003','ETIMEDOUT','ECONNRESET'].includes(code)||/failed to fetch|networkerror|network request failed|load failed|fetch failed|timeout|connection refused|connection reset|gateway timeout|service unavailable/i.test(msg);
+}
+function nikcarErrorMessage(err){
+ return nikcarNetworkError(err)?'З’єднання нестабільне. Перевірте інтернет. Для фінансових операцій не повторюйте платіж, доки не перевірите його статус.':String(err?.message||err||'Невідома помилка');
+}
+// Retry only read-only requests. Never automatically replay financial writes.
+async function nikcarReadWithRetry(request,maxAttempts=3){
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  if(isOffline())throw new Error(offlineMessage());
+  try{
+   const response=await request();
+   if(response?.error&&nikcarNetworkError(response.error)&&attempt<maxAttempts-1){
+    await new Promise(resolve=>setTimeout(resolve,350*(2**attempt)));
+    continue;
+   }
+   return response;
+  }catch(err){
+   if(!nikcarNetworkError(err)||attempt===maxAttempts-1)throw err;
+   await new Promise(resolve=>setTimeout(resolve,350*(2**attempt)));
+  }
+ }
+}
 function updateNetworkStatus(){
  if(!networkStatus)return;
  networkStatus.hidden=!isOffline();
@@ -1485,7 +1509,7 @@ async function load({preserveDraft=false}={}){
  const expectedUserId=user.id,version=++loadVersion;
  let accessChanged=false;
  try{
-  const {data,error}=await sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at,avatar_path').eq('user_id',expectedUserId).maybeSingle();
+  const {data,error}=await nikcarReadWithRetry(()=>sb.from('profiles').select('id,user_id,full_name,phone,role,access,created_at,avatar_path').eq('user_id',expectedUserId).maybeSingle());
   if(version!==loadVersion||user?.id!==expectedUserId)return;
   if(error)throw error;
   accessChanged=(me?.role||'')!==(data?.role||'')||(me?.access||'')!==(data?.access||'');
@@ -1514,7 +1538,7 @@ async function load({preserveDraft=false}={}){
   if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }catch(err){
   if(version!==loadVersion||user?.id!==expectedUserId)return;
-  toast(`${t('systemError')}: ${err.message||err}`);
+  toast(`${t('systemError')}: ${nikcarErrorMessage(err)}`);
   if(!preserveDraft||forceMutationRefresh||accessChanged||!hasUnsavedForm()){render();forceMutationRefresh=0;}
  }
 }
@@ -2044,7 +2068,7 @@ if(formId==='fuel-price-form'){
  if(error)throw error;toast('Налаштування дня народження збережено');forceMutationRefresh++;await load();return;
  }
  if(formId==='profile-update'){const file=form.querySelector('[name=avatar_photo]')?.files?.[0];let avatar_path=me.avatar_path;if(file)avatar_path=await uploadFleetPhoto(file,'avatars/'+me.id+'/profile.'+photoExt(file));const update={full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()};if(file)update.avatar_path=avatar_path;await mutation(sb.from('profiles').update(update).eq('id',me.id));return;}
- }catch(err){if(formId==='auth-form'||formId==='new-password-form'){const op=formId==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(err.message||err);}finally{inFlightForms.delete(submissionKey);if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
+ }catch(err){if(formId==='auth-form'||formId==='new-password-form'){const op=formId==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(nikcarErrorMessage(err));}finally{inFlightForms.delete(submissionKey);if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
 (async()=>{if(!configured){render();return;}try{
  const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
  sb=mod.createClient(cfg.url,cfg.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
