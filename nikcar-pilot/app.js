@@ -416,7 +416,8 @@ function dashboardPage(){if(!isOwner())return `<div class="banner warning">${t('
  const pending=records.rental_requests.filter(x=>x.status==='pending');
  const urgent=records.sos_requests.filter(x=>['open','claimed'].includes(x.status));
  const nums=[[t('countCars'),total,navIcon('cars')],[t('countDrivers'),drivers.length,navIcon('drivers')],[t('countPending'),pending.length,navIcon('requests')],[t('countSOS'),urgent.length,navIcon('sos')]];
- const cards=nums.map(([label,val,icon])=>`<div class="metric"><span class="metric-icon">${icon}</span><div class="metric-value">${val}</div><div class="small">${label}</div></div>`).join('');
+ const cardPages=['cars','drivers','requests','sos'];
+ const cards=nums.map(([label,val,icon],i)=>`<button type="button" class="metric metric-link" data-action="nav" data-page="${cardPages[i]}" aria-label="${e(label)}: ${val}. Відкрити розділ"><span class="metric-icon">${icon}</span><div class="metric-value">${val}</div><div class="small">${label}</div></button>`).join('');
  const requestRows=pending.slice(0,5).map(r=>`<div class="line"><div><b>${e(carName(r.car_id))}</b><div class="small">${e(name(r.driver_id))} · ${d(r.created_at)}</div></div><button class="btn secondary tiny" data-action="nav" data-page="requests">${t('requests')}</button></div>`).join('');
  const sosRows=urgent.slice(0,5).map(x=>`<div class="line"><div><b>${e(t(x.category))}</b><div class="small">${e(name(x.requester_id))} · ${e(x.location_text||'')}</div></div>${status(x.status)}</div>`).join('');
  const hi=lang==='uk'?'Вітаємо в NikCar':'Welcome to NikCar';
