@@ -1132,3 +1132,22 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .nikcar-fold-card>.card{padding:15px!important}
 }
 @media(prefers-reduced-motion:reduce){.nikcar-fold-summary>span:last-child{transition:none}}
+
+
+/* NikCar 1.25.9 — reliable full navigation on iPhone */
+.nikcar-top-menu{display:none}
+@media(max-width:880px){
+ .nikcar-top-menu{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:9px 12px;font-weight:800;white-space:nowrap;min-height:42px}
+ .mobilebar .nikcar-all-menu{font-weight:850!important}
+ .more-overlay{display:flex!important;position:fixed!important;inset:0!important;z-index:2100!important;background:rgba(0,0,0,.75)!important;align-items:flex-end!important;padding:0!important}
+ .more-sheet{width:100%!important;max-height:min(83dvh,790px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:20px 16px calc(26px + env(safe-area-inset-bottom,0px))!important;border-radius:26px 26px 0 0!important}
+ .nik-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .more-sheet .nik-more-grid button{min-height:70px}
+ .mobilebar{z-index:1000!important}
+}
+@media(max-width:420px){
+ .nikcar-top-menu{padding:8px 9px;font-size:12px}
+ .mobilebar .nikcar-all-menu{background:rgba(223,255,54,.14)!important;color:#dfff36!important}
+ .mobilebar .nikcar-all-menu span{color:inherit!important}
+}
+:root[data-theme="dark"] .nikcar-top-menu{background:#292e23;color:#e7ff85;border-color:#434b33}
