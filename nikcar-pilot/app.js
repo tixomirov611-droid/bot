@@ -1427,6 +1427,8 @@ function nikcarEnhanceSections(){
  const cards=[];for(const container of containers){for(const el of container.children){if(el.matches?.('.card:not(details):not(.nikcar-income-hero)')&&!el.closest('details')&&!el.querySelector('details.nik-doc-accordion'))cards.push(el);}}
  if(cards.length<2)return;
  let index=0;for(const card of cards){
+  // Never collapse an active editing form, payment confirmation, or a panel with pending input.
+  if(card.querySelector('form, [data-submitting="1"], [data-dirty="1"]'))continue;
   if(card.querySelector('[id^="nikcar-"]')&&page==='payments')continue;
   const heading=card.querySelector(':scope > h2,:scope > h3,:scope > .car-top + .car-art + h2,:scope > .panel-heading h2');
   const title=heading?.textContent?.trim()||card.querySelector('.car-top')?.nextElementSibling?.nextElementSibling?.textContent?.trim()||'Деталі';
