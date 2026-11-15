@@ -706,12 +706,54 @@ function chatPage(){
  return `<section class="card chat-panel"><div class="chat-header"><div class="chat-avatar">💬</div><div><b>Чат NikCar</b><div><button type="button" class="btn secondary tiny" data-action="enable-push">🔔 Увімкнути push</button></div><div class="small"><span id="chat-online-count">${chatOnlineUsers.size} онлайн</span> · спільний чат автопарку</div></div></div><div class="chat-people" aria-label="Учасники чату">${people||'<span class="small">Учасників поки немає</span>'}</div><div class="chatbox" id="messages" role="log" aria-label="Повідомлення">${lines||`<span class="small">${t('noChat')}</span>`}</div><form id="chat-send" class="chat-compose"><input name="text" aria-label="${t('message')}" placeholder="Написати повідомлення…" autocomplete="off" maxlength="2000" required><button class="btn" type="submit" aria-label="${t('send')}">➤</button></form></section>`;
 }
 function sosPage(){if(!activeMember())return `<div class="banner warning">${t('notApproved')}</div>`;const form=!isOwner()?`<div class="card" style="margin-bottom:15px"><form id="sos-create" class="form"><label class="field">${t('sosType')}<select name="category">${['jump_start','tow','wheel','other'].map(v=>`<option value="${v}">${t(v)}</option>`).join('')}</select></label><label class="field">${t('location')}<input name="location" maxlength="200"></label><label class="field">${t('description')}<textarea name="note" maxlength="1000"></textarea></label><button class="btn" type="submit">${t('createSos')}</button></form></div>`:'';const list=records.sos_requests.map(s=>{const claim=s.status==='open'&&s.requester_id!==me.id&&!isOwner();const release=s.status==='claimed'&&s.helper_id===me.id;const cancel=s.status==='open'&&s.requester_id===me.id;return `<div class="line"><div><b>${e(t(s.category))}</b><div class="small">${e(name(s.requester_id))} · ${d(s.created_at)}</div><p>${e(s.location_text||'')} ${e(s.note||'')}</p>${status(s.status)} ${s.helper_id?`<span class="small">${t('helper')}: ${e(name(s.helper_id))}</span>`:''}</div><div class="actions">${claim?`<button class="btn tiny" data-action="claim-sos" data-id="${s.id}">${t('claim')}</button>`:''}${release?`<button class="btn secondary tiny" data-action="release-sos" data-id="${s.id}">${t('release')}</button><button class="btn tiny" data-action="finish-sos" data-id="${s.id}">${t('complete')}</button>`:''}${cancel?`<button class="btn secondary tiny" data-action="cancel-sos" data-id="${s.id}">${t('cancelSos')}</button>`:''}</div></div>`}).join('');return `<p>${t('sosInfo')}</p>${form}<div class="card">${list||t('noSos')}</div>`}
+// Diia screenshot OCR: runs locally in the browser; values require human review.
+let nikcarFineOcrLoading=null;
+async function nikcarFineOcrLibrary(){
+ if(window.Tesseract)return window.Tesseract;
+ if(!nikcarFineOcrLoading)nikcarFineOcrLoading=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(Error('OCR недоступний'));
+  script.onerror=()=>reject(Error('Не вдалося завантажити модуль розпізнавання'));
+  document.head.appendChild(script);
+ }).catch(err=>{nikcarFineOcrLoading=null;throw err;});
+ return nikcarFineOcrLoading;
+}
+function nikcarFineOcrFields(text){
+ const normalized=String(text||'').replace(/[\u00a0\u202f]/g,' ');
+ const moneyMatches=[...normalized.matchAll(/(?:сума(?: штрафу)?|до сплати|штраф|розмір штрафу)\s*[:№-]?\s*(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:грн|₴)?/gi)];
+ const amounts=moneyMatches.map(m=>Number(m[1].replace(/\s/g,'').replace(',','.'))).filter(v=>v>0&&v<1000000);
+ const amount=amounts.length?amounts[0]:null;
+ const notice=normalized.match(/(?:постанова|постанови|серія\s*(?:та|і)\s*номер|№)\s*(?:№|номер|серія|:|\s)*([А-ЯІЇЄҐA-Z0-9-]{6,30})/i);
+ const date=normalized.match(/(?:дата(?:\s+порушення)?|порушення|час)\D{0,22}(\d{2})[.\/-](\d{2})[.\/-](20\d{2})(?:\D{1,8}(\d{2})[:.](\d{2}))?/i)||normalized.match(/(\d{2})[.\/-](\d{2})[.\/-](20\d{2})(?:\D{1,8}(\d{2})[:.](\d{2}))?/);
+ const plate=normalized.match(/\b[АВЕКМНОРСТУХABEKMHOPCTYXІЇЄҐ]{2}\s?\d{4}\s?[АВЕКМНОРСТУХABEKMHOPCTYXІЇЄҐ]{2}\b/i);
+ return {amount,notice:notice?.[1]||'',date:date?`${date[3]}-${date[2]}-${date[1]}T${date[4]||'00'}:${date[5]||'00'}`:'',plate:plate?.[0]?.replace(/\s/g,'')||''};
+}
+document.addEventListener('change',async evt=>{
+ if(evt.target?.name!=='fine_screenshot'||!evt.target.closest('#fleet-fine-form'))return;
+ const form=evt.target.closest('form'),file=evt.target.files?.[0],status=form.querySelector('#fine-ocr-status');
+ if(!file)return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){if(status)status.textContent='Потрібен JPG, PNG або WebP до 5 МБ';return;}
+ if(status)status.textContent='Розпізнавання скриншота…';
+ try{
+  const lib=await nikcarFineOcrLibrary(),worker=await lib.createWorker('ukr+eng');
+  let result;
+  try{result=await worker.recognize(file);}finally{await worker.terminate();}
+  if(!form.isConnected)return;
+  const fields=nikcarFineOcrFields(result?.data?.text||'');
+  if(fields.amount){form.elements.amount.value=fields.amount.toFixed(2);form.elements.amount.dispatchEvent(new Event('input',{bubbles:true}));}
+  if(fields.notice)form.elements.notice_number.value=fields.notice;
+  if(fields.date&&!Number.isNaN(Date.parse(fields.date)))form.elements.violation_at.value=fields.date;
+  if(fields.plate){const car=(records.cars||[]).find(c=>String(c.plate||'').replace(/\s/g,'').toUpperCase()===fields.plate.toUpperCase());if(car)form.elements.car_id.value=car.id;}
+  if(status)status.textContent='Розпізнавання завершено. Перевірте суму, дату, номер постанови та авто перед збереженням.';
+ }catch(err){console.warn('Fine OCR failed',err);if(status)status.textContent='Не вдалося розпізнати скриншот. Заповніть поля вручну.';}
+});
 function finesSection(){
  const all=(records.fleet_fines||[]).filter(x=>isOwner()||x.driver_id===me?.id);
  const owed=all.filter(x=>x.status==='assigned').reduce((sum,x)=>sum+Number(x.amount||0),0);
  const rows=all.slice().sort((a,b)=>String(b.violation_at).localeCompare(String(a.violation_at))).map(x=>'<div class="line"><div><b>'+e(carName(x.car_id))+' · '+money(x.amount)+'</b><div class="small">Постанова: '+e(x.notice_number)+' · '+d(x.violation_at)+'</div><div class="small">'+e(x.notes||'')+'</div>'<div class="small">'+e(x.status==='assigned'?'Закріплено за водієм':x.status==='pending_review'?'Потрібна перевірка':x.status==='paid'?'Сплачено':'Скасовано')+(isOwner()&&x.driver_id?' · '+e(name(x.driver_id)):'')+'</div></div>'+(isOwner()&&x.status==='assigned'?'<button type="button" class="btn secondary tiny" data-action="cancel-fine" data-id="'+e(x.id)+'">Скасувати помилкове</button>':'')+'</div>').join('');
  const carOptions=(records.cars||[]).map(c=>'<option value="'+e(c.id)+'">'+e(c.model)+' · '+e(c.plate)+'</option>').join('');
- const ownerForm=isOwner()?'<form class="form" id="fleet-fine-form"><h3>Додати підтверджену постанову</h3><p class="small">Водій визначається автоматично за часом видачі та повернення. Якщо збіг неоднозначний, штраф залишається на перевірці.</p><label class="field">Автомобіль<select name="car_id" required>'+carOptions+'</select></label><label class="field">Номер постанови<input name="notice_number" required maxlength="100"></label><label class="field">Дата і час порушення<input name="violation_at" type="datetime-local" required></label><label class="field">Сума штрафу з Дії, ₴<input name="amount" type="number" step="0.01" min="0.01" required oninput="document.getElementById('fine-total-preview').textContent=this.value&&Number(this.value)>0?(Math.round(Number(this.value)*110)/100).toFixed(2)+' ₴':'—'"></label><p class="small">Сервісний збір NikCar: +10%. Разом до сплати: <strong id="fine-total-preview">—</strong></p><label class="field">Скріншот постанови з Дії (JPG, PNG, WebP; до 5 МБ)<input name="fine_screenshot" type="file" accept="image/jpeg,image/png,image/webp"></label><label class="field">Примітка<input name="notes" maxlength="500"></label><button class="btn" type="submit">Зареєструвати штраф</button></form>':'';
+ const ownerForm=isOwner()?'<form class="form" id="fleet-fine-form"><h3>Додати підтверджену постанову</h3><p class="small">Водій визначається автоматично за часом видачі та повернення. Якщо збіг неоднозначний, штраф залишається на перевірці.</p><label class="field">Автомобіль<select name="car_id" required>'+carOptions+'</select></label><label class="field">Номер постанови<input name="notice_number" required maxlength="100"></label><label class="field">Дата і час порушення<input name="violation_at" type="datetime-local" required></label><label class="field">Сума штрафу з Дії, ₴<input name="amount" type="number" step="0.01" min="0.01" required oninput="document.getElementById('fine-total-preview').textContent=this.value&&Number(this.value)>0?(Math.round(Number(this.value)*110)/100).toFixed(2)+' ₴':'—'"></label><p class="small">Сервісний збір NikCar: +10%. Разом до сплати: <strong id="fine-total-preview">—</strong></p><label class="field">Скріншот постанови з Дії (JPG, PNG, WebP; до 5 МБ)<input name="fine_screenshot" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small" id="fine-ocr-status" role="status">Після вибору скриншота поля будуть заповнені автоматично. Перевірте результат.</p><label class="field">Примітка<input name="notes" maxlength="500"></label><button class="btn" type="submit">Зареєструвати штраф</button></form>':'';
  return '<section class="card"><h2>⚖️ Штрафи ПДР</h2><p class="small">Штрафи закріплюються за водієм автоматично за часом фактичної оренди. Підтвердження водія не потрібне. Дані з офіційного реєстру поки не синхронізуються автоматично.</p><h3>Нараховано до сплати: '+money(owed)+'</h3>'+rows+(rows?'':'<p class="small">Штрафів немає.</p>')+ownerForm+'</section>';
 }
 function fuelPriceSection(){
