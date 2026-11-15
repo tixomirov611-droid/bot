@@ -1871,8 +1871,29 @@ if(formId==='fuel-price-form'){
   forceMutationRefresh++;await load();return;
  }
  if(formId==='edit-car-form'){
-  if(!isOwner())return;if(requestManualCarYear(form))return;const carId=String(f.get('car_id')||'');const newRate=Number(f.get('rate'));if(!Number.isFinite(newRate)||newRate<1)throw Error('Вкажіть коректну ціну оренди за тиждень');if(!records.cars.some(c=>c.id===carId))throw Error('Автомобіль не знайдено');
-  const carFile=form.querySelector('[name=car_photo]')?.files?.[0];const passportFile=pendingPassportPhotos.front;const passportBackFile=pendingPassportPhotos.back;const photoPath=carFile?await uploadFleetPhoto(carFile,'cars/'+carId+'/'+Date.now()+'.'+photoExt(carFile)):null;const saved=await mutation(sb.from('cars').update({...(photoPath?{photo_path:photoPath}:{}),plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,weekly_rate:Number(f.get('rate')),daily_rate:Number(f.get('rate'))/7,vin:String(f.get('vin')||'').trim().toUpperCase()||null,registration_certificate:String(f.get('registration_certificate')||'').trim().toUpperCase()||null}).eq('id',carId).select('id'));if(saved){carEditor=null;render();toast('Дані авто збережено. Нова ціна діє з наступного дня.');}return;
+  if(!isOwner())return;
+  if(requestManualCarYear(form))return;
+  const carId=String(f.get('car_id')||'');
+  const car=records.cars.find(c=>c.id===carId);
+  if(!car)throw Error('Автомобіль не знайдено. Оновіть список.');
+  const newRate=Number(f.get('rate'));
+  if(!Number.isFinite(newRate)||newRate<1)throw Error('Вкажіть коректну ціну оренди за тиждень');
+  const carFile=form.querySelector('[name=car_photo]')?.files?.[0];
+  const passportFile=pendingPassportPhotos.front,passportBackFile=pendingPassportPhotos.back;
+  for(const file of [carFile,passportFile,passportBackFile])if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024))throw Error('Фото: JPG/PNG/WebP, до 5 МБ');
+  const changes={plate:String(f.get('plate')||'').trim().toUpperCase(),model:String(f.get('model')||'').trim(),year:f.get('year')?Number(f.get('year')):null,weekly_rate:newRate,daily_rate:newRate/7,vin:String(f.get('vin')||'').trim().toUpperCase()||null,registration_certificate:String(f.get('registration_certificate')||'').trim().toUpperCase()||null};
+  if(carFile)changes.photo_path=await uploadFleetPhotoWithRetry(carFile,'cars/'+carId+'/main-'+Date.now()+'.'+photoExt(carFile));
+  if(passportFile)changes.registration_photo_path=await uploadFleetPhotoWithRetry(passportFile,'cars/'+carId+'/registration-front-'+Date.now()+'.'+photoExt(passportFile));
+  if(passportBackFile)changes.registration_photo_back_path=await uploadFleetPhotoWithRetry(passportBackFile,'cars/'+carId+'/registration-back-'+Date.now()+'.'+photoExt(passportBackFile));
+  const {data:updated,error}=await sb.from('cars').update(changes).eq('id',carId).select('id,plate,model,weekly_rate,vin,registration_certificate').single();
+  if(error)throw error;
+  if(!updated||updated.id!==carId)throw Error('Збереження не підтверджено сервером');
+  carEditor=null;
+  pendingPassportPhotos={front:null,back:null};
+  forceMutationRefresh++;
+  await load();
+  toast('Дані авто збережено та оновлено з бази.');
+  return;
  }
  if(formId==='new-car'){if(requestManualCarYear(form))return;const carFile=form.querySelector('[name=car_photo]')?.files?.[0];const passportFile=pendingPassportPhotos.front;const passportBackFile=pendingPassportPhotos.back;if(carFile&&(!['image/jpeg','image/png','image/webp'].includes(carFile.type)||carFile.size>5*1024*1024))throw Error('Фото: JPG/PNG/WebP, до 5 МБ');const {data:created,error}=await sb.from('cars').insert({plate:String(f.get('plate')).trim().toUpperCase(),model:String(f.get('model')).trim(),year:f.get('year')?Number(f.get('year')):null,weekly_rate:Number(f.get('rate')),daily_rate:Number(f.get('rate'))/7,vin:String(f.get('vin')||'').trim().toUpperCase()||null,registration_certificate:String(f.get('registration_certificate')||'').trim().toUpperCase()||null}).select('id').single();if(error){toast(error.message);return;}if(carFile||passportFile||passportBackFile){try{const changes={};if(carFile)changes.photo_path=await uploadFleetPhotoWithRetry(carFile,'cars/'+created.id+'/main.'+photoExt(carFile));if(passportFile)changes.registration_photo_path=await uploadFleetPhotoWithRetry(passportFile,'cars/'+created.id+'/registration-front.'+photoExt(passportFile));if(passportBackFile)changes.registration_photo_back_path=await uploadFleetPhotoWithRetry(passportBackFile,'cars/'+created.id+'/registration-back.'+photoExt(passportBackFile));const saved=await sb.from('cars').update(changes).eq('id',created.id);if(saved.error)throw saved.error;}catch(err){toast('Авто додано, але фото не завантажено: '+err.message);}}/* Clear draft BEFORE load/render: the old mutation() refreshed the page and re-captured saved fields. */clearNewCarForm();const ocrStatus=document.getElementById('tech-passport-status');if(ocrStatus)ocrStatus.textContent='Автомобіль збережено. Форма готова до наступного додавання.';toast(lang==='uk'?'Автомобіль додано':'Car added');forceMutationRefresh++;await load();return;}
  if(formId==='chat-send'){const body=String(f.get('text')||'').trim();if(!body)return;const {data:sent,error:sendError}=await sb.from('chat_messages').insert({sender_id:me.id,body}).select('id').single();if(sendError)throw sendError;try{const {error:pushError}=await sb.functions.invoke('nikcar-chat-push',{body:{message_id:sent.id}});if(pushError)console.warn('Chat push unavailable',pushError);}catch(pushError){console.warn('Chat push unavailable',pushError);}forceMutationRefresh++;await load();return;}
