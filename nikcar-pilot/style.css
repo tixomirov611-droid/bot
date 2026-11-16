@@ -1225,3 +1225,50 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .main{padding-bottom:calc(94px + env(safe-area-inset-bottom,0px))!important}
  .more-sheet{max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;overflow-y:auto!important}
 }
+
+/* 5.3–5.4: unified NikCar charcoal/lime surfaces and mobile form ergonomics */
+:root[data-theme="dark"]{
+ --accent:#dfff00;--accent-dark:#e9ff64;
+ --bg:#101116;--surface:#1a1c23;--soft:#252a21;
+ --line:#353b35;--ink:#f2f5ec;--muted:#b5bcb1;
+}
+:root[data-theme="dark"] .main .card,
+:root[data-theme="dark"] .main details.card,
+:root[data-theme="dark"] .nikcar-fold-card,
+:root[data-theme="dark"] .main .panel{
+ border-color:var(--line);color:var(--ink);
+}
+:root[data-theme="dark"] .main input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="dark"] .main select,
+:root[data-theme="dark"] .main textarea{
+ background:#22252b;color:#f2f5ec;border:1px solid #444a48;
+}
+:root[data-theme="dark"] .main input:focus-visible,
+:root[data-theme="dark"] .main select:focus-visible,
+:root[data-theme="dark"] .main textarea:focus-visible{
+ outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);
+}
+:root[data-theme="dark"] .main .btn:not(.danger):not(.secondary){
+ background:var(--accent);border-color:var(--accent);color:#141713;
+}
+:root[data-theme="dark"] .main .btn.secondary{
+ background:#282c31;border-color:#4a5046;color:var(--accent-dark);
+}
+:root[data-theme="dark"] .main .btn:disabled{opacity:.5}
+@media(max-width:680px){
+ html,body,#root,.shell,.workspace,.main{max-width:100%;min-width:0}
+ .main{overflow-wrap:break-word}
+ .main .card,.main details.card,.main .panel,
+ .main form,.main .field{min-width:0;max-width:100%;box-sizing:border-box}
+ .main input:not([type="checkbox"]):not([type="radio"]),
+ .main select,.main textarea{min-width:0;max-width:100%;box-sizing:border-box;font-size:16px}
+ .main .btn,.main button,.main select{min-height:44px}
+ .main .actions{flex-wrap:wrap;gap:8px}
+ .main .actions>.btn,.main .actions>button{max-width:100%;white-space:normal}
+ .main img,.main video,.main canvas{max-width:100%}
+ .main{padding-bottom:calc(122px + env(safe-area-inset-bottom,0px))!important}
+}
+@media(orientation:landscape) and (max-height:520px) and (pointer:coarse){
+ .main{padding-bottom:calc(98px + env(safe-area-inset-bottom,0px))!important}
+ .main .field input,.main .field select,.main .field textarea{font-size:16px}
+}
