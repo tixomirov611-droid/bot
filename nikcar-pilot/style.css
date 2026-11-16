@@ -1274,3 +1274,24 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
 }
 
 /* Accessibility rules moved to styles/accessibility.css */
+
+
+/* NikCar 1.4: responsive liquid rent summary */
+.nikcar-liquid-card{overflow:hidden;background:linear-gradient(145deg,#191d19,#101310);border:1px solid #37432b;color:#f5f8ef}
+.nikcar-liquid-title{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.nikcar-liquid-title>span{color:#dfff39;font-size:11px;letter-spacing:.14em}
+.nikcar-liquid-title>strong{font-size:21px}
+.nikcar-liquid-layout{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.nikcar-liquid-orb{position:relative;flex:0 0 164px;width:164px;height:164px;border-radius:50%;overflow:hidden;background:#303832;border:5px solid #414d38;box-shadow:0 0 0 4px #1c251a,0 12px 32px #0005;isolation:isolate}
+.nikcar-liquid-fill{position:absolute;inset:0;background:linear-gradient(180deg,#edff6e,#a4dd00);transform:translateY(var(--level,100%)) rotate(var(--liquid-tilt,0deg));transform-origin:50% 110%;transition:transform 1.15s cubic-bezier(.2,.8,.2,1)}
+.nikcar-liquid-fill:before,.nikcar-liquid-fill:after{content:"";position:absolute;width:220%;height:50px;left:-60%;top:-27px;background:#303832;border-radius:43%;animation:nikcar-liquid-wave 5s linear infinite}
+.nikcar-liquid-fill:after{top:-20px;opacity:.55;animation-duration:7s;animation-direction:reverse}
+@keyframes nikcar-liquid-wave{from{transform:translateX(-8%) rotate(0)}to{transform:translateX(8%) rotate(360deg)}}
+.nikcar-liquid-orb-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-shadow:0 2px 8px #000a;z-index:1}
+.nikcar-liquid-orb-text strong{font-size:34px}.nikcar-liquid-orb-text small{font-size:12px}
+.nikcar-liquid-values{flex:1;min-width:200px;display:grid;gap:9px}
+.nikcar-liquid-values>div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #ffffff20}
+.nikcar-liquid-values span{color:#c2c9bd;font-size:13px}.nikcar-liquid-values b{color:#eaffaa;white-space:nowrap}
+.nikcar-liquid-card>.small{color:#aeb8aa}
+@media(max-width:440px){.nikcar-liquid-layout{justify-content:center}.nikcar-liquid-values{width:100%}}
+@media(prefers-reduced-motion:reduce){.nikcar-liquid-fill,.nikcar-liquid-fill:before,.nikcar-liquid-fill:after{animation:none;transition:none}}
