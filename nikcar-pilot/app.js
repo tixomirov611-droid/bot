@@ -2176,8 +2176,16 @@ if(formId==='fuel-price-form'){
  if(!me||me.role!=='driver'||isMechanic())throw Error('Лише водій');
  const day=Number(f.get('day')),month=Number(f.get('month')),share=f.has('share');
  if(!Number.isInteger(day)||!Number.isInteger(month)||month<1||month>12||day<1||day>new Date(2000,month,0).getDate())throw Error('Вкажіть правильні день та місяць');
- const {error}=await sb.from('nikcar_driver_birthdays').upsert({profile_id:me.id,birth_day:day,birth_month:month,share_with_team:share,updated_at:new Date().toISOString()},{onConflict:'profile_id'});
- if(error)throw error;toast('Налаштування дня народження збережено');forceMutationRefresh++;await load();return;
+ if(me.access!=='active')throw Error('Збереження доступне лише для активного профілю водія');
+ const payload={profile_id:me.id,birth_day:day,birth_month:month,share_with_team:share,updated_at:new Date().toISOString()};
+ const {data:saved,error}=await sb.from('nikcar_driver_birthdays').upsert(payload,{onConflict:'profile_id'}).select('profile_id,birth_day,birth_month,share_with_team').single();
+ if(error)throw error;
+ if(!saved||saved.profile_id!==me.id||Number(saved.birth_day)!==day||Number(saved.birth_month)!==month||saved.share_with_team!==share)throw Error('База не підтвердила збереження дати. Спробуйте ще раз.');
+ const {data:verified,error:verifyError}=await sb.from('nikcar_driver_birthdays').select('profile_id,birth_day,birth_month,share_with_team').eq('profile_id',me.id).single();
+ if(verifyError)throw verifyError;
+ if(Number(verified.birth_day)!==day||Number(verified.birth_month)!==month||verified.share_with_team!==share)throw Error('Дата у базі відрізняється від обраної');
+ records.nikcar_driver_birthdays=[...(records.nikcar_driver_birthdays||[]).filter(x=>x.profile_id!==me.id),verified];
+ toast('Дату народження збережено та перевірено');forceMutationRefresh++;await load();return;
  }
  if(formId==='profile-update'){const file=form.querySelector('[name=avatar_photo]')?.files?.[0];let avatar_path=me.avatar_path;if(file)avatar_path=await uploadFleetPhoto(file,'avatars/'+me.id+'/profile.'+photoExt(file));const update={full_name:String(f.get('fullname')||'').trim(),phone:String(f.get('phone')||'').trim()};if(file)update.avatar_path=avatar_path;await mutation(sb.from('profiles').update(update).eq('id',me.id));return;}
  }catch(err){if(formId==='auth-form'||formId==='new-password-form'){const op=formId==='auth-form'?(mode==='reset'?'reset':mode==='signup'?'signup':mode==='signin'&&authMethod==='magic'?'magic':''):'';authNotice=authErrorMessage(err,op);authNoticeIsError=true;if(isOffline())toast(authNotice);else render();}else toast(nikcarErrorMessage(err));}finally{inFlightForms.delete(submissionKey);if(form.isConnected){form.dataset.submitting='0';if(submitBtn)submitBtn.disabled=false;}}});
