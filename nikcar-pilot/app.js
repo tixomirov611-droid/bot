@@ -1827,6 +1827,11 @@ document.addEventListener('change',async evt=>{
    const query=old?sb.from('driver_documents').update({object_path:path}).eq('id',old.id):sb.from('driver_documents').insert({driver_id:driverProfileId,car_id:kind.startsWith('rental_contract')?car:null,kind,object_path:path});
    const {error:saveError}=await query;
    if(saveError)throw saveError;
+   const {data:linked,error:linkError}=await sb.from('driver_documents').select('id,object_path,driver_id,car_id,kind').eq('driver_id',driverProfileId).eq('kind',kind).eq('object_path',path).limit(1);
+   if(linkError||!linked?.length)throw Error('Сервер не підтвердив прив’язку документа');
+   const {data:files,error:filesError}=await sb.storage.from('nikcar-driver-docs').list(path.slice(0,path.lastIndexOf('/')),{search:fileId+'.'+ext,limit:10});
+   if(filesError||!files?.some(item=>item.name===fileId+'.'+ext))throw Error('Документ не знайдено у сховищі');
+   uploaded=false;
    toast(t('docUploadDone'));await load();
  }catch(error){
     if(uploaded){
