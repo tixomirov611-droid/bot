@@ -1827,6 +1827,7 @@ document.addEventListener('change',async evt=>{
    const query=old?sb.from('driver_documents').update({object_path:path}).eq('id',old.id):sb.from('driver_documents').insert({driver_id:driverProfileId,car_id:kind.startsWith('rental_contract')?car:null,kind,object_path:path});
    const {error:saveError}=await query;
    if(saveError)throw saveError;
+   uploaded=false; // The file is now linked; never delete it on a later verification failure.
    const {data:linked,error:linkError}=await sb.from('driver_documents').select('id,object_path,driver_id,car_id,kind').eq('driver_id',driverProfileId).eq('kind',kind).eq('object_path',path).limit(1);
    if(linkError||!linked?.length)throw Error('Сервер не підтвердив прив’язку документа');
    const {data:files,error:filesError}=await sb.storage.from('nikcar-driver-docs').list(path.slice(0,path.lastIndexOf('/')),{search:fileId+'.'+ext,limit:10});
@@ -2113,6 +2114,7 @@ if(formId==='fuel-price-form'){
   const same=(a,b)=>String(a??'')===String(b??'');
   const mismatched=Object.keys(changes).filter(key=>key==='weekly_rate'||key==='daily_rate'?Math.abs(Number(verified[key])-Number(changes[key]))>0.011:!same(verified[key],changes[key]));
   if(mismatched.length)throw Error('Сервер не підтвердив збереження полів: '+mismatched.join(', ')+'. Перевірте дані перед повторною спробою.');
+  for(const key of ['photo_path','registration_photo_path','registration_photo_back_path'])if(changes[key]){const path=changes[key],fileName=path.split('/').pop(),folder=path.slice(0,-fileName.length-1);const {data:stored,error:storageError}=await sb.storage.from('nikcar-photos').list(folder,{search:fileName,limit:10});if(storageError||!stored?.some(item=>item.name===fileName))throw Error('Файл '+key+' не підтверджено в Storage');}
   carEditor=null;
   pendingPassportPhotos.front=null;pendingPassportPhotos.back=null;
   forceMutationRefresh++;
