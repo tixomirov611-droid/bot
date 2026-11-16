@@ -1210,3 +1210,18 @@ input[type=date],input[type=datetime-local],input[type=time]{min-height:44px}
  .main{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}
  .more-overlay{display:flex!important}
 }
+
+/* 5.1: compact landscape iPhone bottom dock and safe-area clearance */
+@media (orientation:landscape) and (max-height:520px) and (pointer:coarse){
+ .mobilebar, :root[data-theme="dark"] .mobilebar{
+  width:min(680px,calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 20px))!important;
+  max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 8px)!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch;
+ }
+ .mobilebar>button, :root[data-theme="dark"] .mobilebar>button{
+  min-height:44px!important;max-height:54px!important;
+ }
+ .main{padding-bottom:calc(94px + env(safe-area-inset-bottom,0px))!important}
+ .more-sheet{max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;overflow-y:auto!important}
+}
