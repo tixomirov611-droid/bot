@@ -1305,7 +1305,7 @@ function parseTechPassport(text){
  const brand=makePart||brandFromText;
  const cleanedModel=[brand,modelPart].filter((x,i,arr)=>x&&!(i&&arr[0].toUpperCase()===x.toUpperCase())).join(' ').slice(0,120);
  const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||field('E');
- const vin=(normalizeLetters(vinSource).match(/[A-HJ-NPR-Z0-9]{17}(?![A-Z0-9])/)||normalizeLetters(raw).match(/\b[A-HJ-NPR-Z0-9]{17}\b/)||[])[0]||'';
+ const vinCandidates=[...normalizeLetters(vinSource).matchAll(/(?:^|[^A-Z0-9])([A-HJ-NPR-Z0-9]{17})(?![A-Z0-9])/g)].map(m=>m[1]);const fallbackVinCandidates=[...normalizeLetters(raw).matchAll(/\b[A-HJ-NPR-Z0-9]{17}\b/g)].map(m=>m[0]);const vin=[...new Set(vinCandidates.length?vinCandidates:fallbackVinCandidates)].length===1?[...new Set(vinCandidates.length?vinCandidates:fallbackVinCandidates)][0]:'';
  const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i)||field('B.2');
  let year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
  if(!year){
@@ -1316,7 +1316,7 @@ function parseTechPassport(text){
 
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
  // Prefer explicit №: the serial at the bottom is not field A (vehicle plate).
- const certText=String(certSource+'\n'+raw).toUpperCase();
+ const certText=String(certSource+'\n'+raw).toUpperCase().replace(/([A-ZА-ЯІЇЄ]{3})\s*\n\s*(?:№\s*)?(\d{6})/g,'$1 № $2');
  const certPattern=/(?:^|[^A-ZА-ЯІЇЄ0-9])([A-ZА-ЯІЇЄ]{3})\s*(?:№|N[OО°º.]?[EЕ]?|М[ОO]|NO\.)\s*([0-9OОІI]{6})(?![A-ZА-ЯІЇЄ0-9])/g;
  const explicit=[...certText.matchAll(certPattern)];
  const plain=[...certText.matchAll(/(?:^|[^A-ZА-ЯІЇЄ0-9])([A-ZА-ЯІЇЄ]{3})\s+(\d{6})(?![A-ZА-ЯІЇЄ0-9])/g)];
