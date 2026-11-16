@@ -1305,7 +1305,7 @@ function parseTechPassport(text){
  const brand=makePart||brandFromText;
  const cleanedModel=[brand,modelPart].filter((x,i,arr)=>x&&!(i&&arr[0].toUpperCase()===x.toUpperCase())).join(' ').slice(0,120);
  const vinSource=labeled(/^\s*(?:VIN|номер кузова|ідентифікаційний номер)\s*[:\-]/i)||field('E');
- const vinCandidates=[...normalizeLetters(vinSource).matchAll(/(?:^|[^A-Z0-9])([A-HJ-NPR-Z0-9]{17})(?![A-Z0-9])/g)].map(m=>m[1]);const fallbackVinCandidates=[...normalizeLetters(raw).matchAll(/\b[A-HJ-NPR-Z0-9]{17}\b/g)].map(m=>m[0]);const vin=[...new Set(vinCandidates.length?vinCandidates:fallbackVinCandidates)].length===1?[...new Set(vinCandidates.length?vinCandidates:fallbackVinCandidates)][0]:'';
+ const vinCandidates=[...normalizeLetters(vinSource).matchAll(/(?:^|[^A-Z0-9])([A-HJ-NPR-Z0-9]{17})(?![A-Z0-9])/g)].map(m=>m[1]);const fallbackVinCandidates=[...normalizeLetters(raw).matchAll(/\b[A-HJ-NPR-Z0-9]{17}\b/g)].map(m=>m[0]);const allVinCandidates=[...new Set([...vinCandidates,...fallbackVinCandidates])];const vin=allVinCandidates.length===1?allVinCandidates[0]:'';
  const yearSource=labeled(/^\s*(?:рік випуску|рік виробництва|year of manufacture|рік виготовлення)\s*[:\-]/i)||field('B.2');
  let year=(yearSource.match(/\b(?:19|20)\d{2}\b/)||[])[0]||'';
  if(!year){
@@ -1314,6 +1314,7 @@ function parseTechPassport(text){
   if(!year){const match=joined.match(/(?:\(?B\s*[.·:]\s*2\)?|YEAR\s+OF\s+MANUFACTURE|РІК\s+ВИПУСКУ)\s*[:\-]?\s*((?:19|20)\d{2})/i);if(match)year=match[1];}
  }
 
+ if(year&&(Number(year)<1950||Number(year)>new Date().getFullYear()+1))year='';
  const certSource=labeled(/^\s*(?:серія(?:\s+та)?\s+номер(?:\s+свідоцтва|\s+техпаспорта)?|номер\s+свідоцтва|registration\s+certificate|certificate\s*(?:number|no\.?))\s*[:\-]/i);
  // Prefer explicit №: the serial at the bottom is not field A (vehicle plate).
  const certText=String(certSource+'\n'+raw).toUpperCase().replace(/([A-ZА-ЯІЇЄ]{3})\s*\n\s*(?:№\s*)?(\d{6})/g,'$1 № $2');
@@ -1334,7 +1335,7 @@ function applyPassportOcrFields(values){
   const field=form.elements.namedItem(name);
   if(!field||!values[name])continue;
   if(field.value.trim()&&field.dataset.ocrFilled!=='1')continue;
-  if(name==='plate'&&field.value.trim()&&field.value.trim()!==values[name])continue;
+  if(name==='plate'&&field.value.trim()&&field.value.trim()!==values[name])continue;if(name==='vin'&&!/^[A-HJ-NPR-Z0-9]{17}$/.test(values[name]))continue;if(name==='year'&&(!/^(19|20)\d{2}$/.test(values[name])||Number(values[name])>new Date().getFullYear()+1))continue;
   if(field.value.trim()===values[name])continue;
   field.value=values[name];field.dataset.ocrFilled='1';filled++;
  }
