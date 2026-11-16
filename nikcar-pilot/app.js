@@ -31,7 +31,10 @@ async function uploadFleetPhoto(file,path){
  const {error}=await sb.storage.from('nikcar-photos').upload(path,file,{contentType:file.type,upsert:true});
  if(error)throw error;photoUrlCache.delete(path);return path;
 }
-async function uploadFleetPhotoWithRetry(file,path){let error;for(let attempt=0;attempt<2;attempt++){try{return await uploadFleetPhoto(file,path);}catch(err){error=err;if(attempt===0)console.warn('Retrying photo upload:',path,err.message);}}throw error;}
+function nikcarRetryableUploadError(err){const msg=String(err?.message||err||'').toLowerCase();return !/row.level.security|permission|unauthorized|forbidden|invalid|size|mime|too.large|not.allowed|policy|duplicate|already.exists|413|400|401|403/.test(msg)&&(/network|fetch|timeout|timed.out|connection|offline|abort|failed|502|503|504|500|service.unavailable|gateway/i.test(msg)||[0,408,429,500,502,503,504].includes(Number(err?.status)));}
+async function nikcarWaitForNetwork(ms=1200){if(typeof navigator!=='undefined'&&navigator.onLine===false)await new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;window.removeEventListener('online',finish);clearTimeout(timer);resolve();};window.addEventListener('online',finish,{once:true});const timer=setTimeout(finish,12000);});else await new Promise(resolve=>setTimeout(resolve,ms));}
+async function nikcarUploadWithRetry(bucket,path,file,options,maxAttempts=3){let last;for(let attempt=1;attempt<=maxAttempts;attempt++){if(user?.id===undefined)throw Error('Сесія завершена');try{const {error}=await sb.storage.from(bucket).upload(path,file,options);if(!error)return path;last=error;}catch(err){last=err;}if(!nikcarRetryableUploadError(last)||attempt===maxAttempts)break;await nikcarWaitForNetwork(600*attempt);}throw last;}
+async function uploadFleetPhotoWithRetry(file,path){if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024)throw Error('Фото: JPG/PNG/WebP, до 5 МБ');await nikcarUploadWithRetry('nikcar-photos',path,file,{contentType:file.type,upsert:true});photoUrlCache.delete(path);return path;}
 function photoExt(file){return file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';}
 function privatePhoto(path,cls,alt,fallback){return path?'<img class="'+cls+'" data-photo-path="'+e(path)+'" src="'+fallback+'" alt="'+e(alt)+'" loading="lazy">':'<img class="'+cls+'" src="'+fallback+'" alt="'+e(alt)+'" loading="lazy">';}
 
@@ -1818,8 +1821,7 @@ document.addEventListener('change',async evt=>{
  let uploaded=false;
  docBusy=true; f.disabled=true;
  try{
-   const {error:uploadError}=await sb.storage.from('nikcar-driver-docs').upload(path,file,{cacheControl:'0',upsert:false,contentType:file.type});
-   if(uploadError)throw uploadError;
+   await nikcarUploadWithRetry('nikcar-driver-docs',path,file,{cacheControl:'0',upsert:false,contentType:file.type});
    uploaded=true;
    if(isOffline())throw new Error(offlineMessage());
    if(user?.id!==authUserId||me?.id!==driverProfileId)throw new Error(lang==='uk'?'Акаунт змінився під час завантаження. Повторіть спробу.':'Account changed during upload. Please try again.');
