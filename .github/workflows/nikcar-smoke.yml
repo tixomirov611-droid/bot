@@ -1,0 +1,23 @@
+name: NikCar smoke tests
+on:
+  push:
+    paths:
+      - 'nikcar-pilot/**'
+      - '.github/workflows/nikcar-smoke.yml'
+  pull_request:
+    paths:
+      - 'nikcar-pilot/**'
+      - '.github/workflows/nikcar-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline smoke tests (no production data)
+        run: node --test nikcar-pilot/tests/smoke.test.cjs
